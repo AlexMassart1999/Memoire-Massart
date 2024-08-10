@@ -1,0 +1,235 @@
+---
+title: "Test_effort_echantillonage"
+output: html_document
+date: "2024-03-12"
+# From script Gabon_maps (Nicolas)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ggspatial)
+library(future.apply)
+library(readr)
+library(raster)
+library(mapview)
+library(terra)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+library(ggmap)
+library(prettymapr)
+library(rnaturalearthhires)
+library(cowplot)
+```
+
+# Création base de données
+```{r Chargement des bases de donnees, include=FALSE}
+#### Downloading of the database with all occurrences
+RB <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Base de données/RB_full_fev_2024_Tropicos.csv", 
+               col_types = list(
+                   dety = col_character(), 
+                   coly = col_character(),
+                   colm = col_character(),
+                   cold = col_character(),
+                   alt = col_character(),
+                   idtax_good_n = col_double(),
+                   id_trait_measures_growth_form_level_1_2 = col_character(),
+                   id_trait_measures_growth_form_level_1_2_1 = col_character(),
+                   id_trait_measures_growth_form_level_1_1_2 = col_character(),
+                   traitvalue_char_growth_form_level_1_1_2 = col_character(),
+                   basisofrecord_growth_form_level_1_1_2 = col_character(),
+                   author3 = col_character(),
+                   tax_rank02 = col_character(),
+                   tax_nam02 = col_character()
+               ))
+```
+
+# BASIC MAP OF GABON
+
+```{r Carte du Gabon, include=FALSE}
+# Charger les shapefiles
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") # zone of interest
+AfricanCountries <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+GabonContour <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+Concessions <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Ensemble_permis_forest.shp")
+
+# Créer le plot
+ggplot() + 
+  geom_sf(data = zone, fill = "#FDF700", color = "#FDF700", alpha = 0.5) + # Zone d'étude en surbrillance
+  geom_sf(data = AfricanCountries, fill = NA, color = "black", size = 0.8) + # Contours des pays africains
+  geom_sf(data = Concessions, fill = "green", color = "green", alpha = 0.5) + #Concessions forestieres en vert
+  geom_sf(data = AfricanCountries %>% filter(COUNTRY == "Gabon"), fill = NA, color = "blue", size = 20) + # Couche supplémentaire pour accentuer la bordure
+  coord_sf(xlim = c(5, 20), ylim = c(-8, 8), expand = FALSE) + # Définir les limites de l'image
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true",  height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  theme(axis.text = element_text(size = 14, color = "black"), axis.title = element_blank(), legend.title = element_blank(), legend.text = element_text(size = 16))
+
+# Sauvegarder l'image
+ggsave("Image_gabon.png", width = 11.69, height = 8.27, dpi = 600)
+```
+
+
+# MAP OF SAMPLING EFFORT
+```{r Definition de la grille, include=FALSE}
+RB_small <- RB %>%  #reducing the size of the data
+  filter(is.na(kind_col) | kind_col=="Herb" | kind_col=="herb" | kind_col=="PRESERVED_SPECIMEN") %>% #keep only herbarium data (remove silicagel and observations data)
+  filter(introduced_status == FALSE | is.na(introduced_status)) %>% #remove introduced species
+  filter(!(DB == "transect" & is.na(nbr) & is.na(colnam))) %>% #remove transect with no collect number and no collector name
+  distinct(DB, nbr, colnam, tax_sp_level, .keep_all = TRUE) %>% #keep only the ones with different collect number, collector name, taxon name)
+  subset(ddlat >= -7 & ddlat <= 7 & ddlon >= 7 & ddlon <= 17) #reduce the size of the zone (not completely so we need to do both st_intersection after)
+
+RB_sf <- sf::st_as_sf(RB_small %>% dplyr::filter(!is.na(ddlon)), coords = c("ddlon", "ddlat"), crs = 4326) #Transformation of the database
+
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+
+# Conversion in 5070 coordinates to do the st_intersection function (https://stackoverflow.com/questions/70099065/st-intersection-between-polygons-and-points)
+RB_sf <- st_transform(RB_sf, crs = 5070)
+zone <- st_transform(zone, crs = 5070)
+grid <- st_transform(grid, crs = 5070)
+```
+
+```{r Carte des efforts d'echantillonage, include=FALSE}
+rm(RB) #for memory
+gc()
+RB_zone <- sf::st_intersection(RB_sf, zone) #select only occurrences that are in the study area
+rm(RB_sf)
+gc()
+RB_zone_grid <- sf::st_intersection(grid, RB_zone) %>%  #add number of grid cell to each specimen
+   rowid_to_column(., "ID")
+RB_zone_grid <- st_transform(RB_zone_grid, crs = 4326) #conversion back after the function
+zone <- st_transform(zone, crs = 4326)
+grid <- st_transform(grid, crs = 4326)
+```
+
+```{r Carte des efforts d'echantillonage 2, include=FALSE}
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv") #downloading if steps above already done
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+ID_RB_speec_dups <- unique(RB_zone_grid$ID[duplicated(RB_zone_grid$ID)]) #which ID specimens are duplicated by st_intersection (= falling at the border of two different cells)
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+
+RB_zone_grid <- RB_zone_grid %>% # Replace the line above so we randomly give one cell for specimens that fall between two grid cells
+  group_by(ID) %>%
+  slice_sample(n = 1) %>%
+  ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>%
+  group_by (ID_grid) %>%
+  summarise(full_esp =  n_distinct(tax_infra_level), full_spec = n())   #count number of species and specimens per bioregion
+flora_all_grid <- left_join(grid, flora_all_grid, by="ID_grid") %>%
+  dplyr::select(ID_grid, full_esp, full_spec)
+
+# allow to divide the flora in sp with more or less presence in grid
+sample0<- flora_all_grid %>% # 0 occurrence
+  filter(is.na(full_spec)) %>% 
+  st_union()
+sample1_10<- flora_all_grid %>% # 1-10 occurrences
+  filter(full_spec<=10 & full_spec>0) %>% 
+  st_union()
+sample11_50<- flora_all_grid %>% # 11-50 occurrences
+  filter(full_spec<=50 & full_spec>10) %>% 
+  st_union()
+sample51_100<- flora_all_grid %>% # 51-100 occurrences
+  filter(full_spec<=100 & full_spec>50) %>% 
+  st_union()
+sample101_125 <- flora_all_grid %>% # 100-125 occurrences
+  filter(full_spec<=125 & full_spec>100) %>% 
+  st_union()
+sample126<- flora_all_grid %>% # plus de 125 occurrences
+  filter(full_spec>125) %>% 
+  st_union()
+
+
+ggplot() + 
+  geom_sf(data = sample0, aes(fill = "0 occurrences"), color = NA, alpha = 0.75) + # LightYellow
+  geom_sf(data = sample1_10, aes(fill = "1-10 occurrences"), color = NA, alpha = 0.75) + # Gold
+  geom_sf(data = sample11_50, aes(fill = "11-50 occurrences"), color = NA, alpha = 0.75) + # Orange
+  geom_sf(data = sample51_100, aes(fill = "51-100 occurrences"), color = NA, alpha = 0.75) + # OrangeRed
+  geom_sf(data = sample101_125, aes(fill = "101-125 occurrences"), color = NA, alpha = 0.75) + # Red
+  geom_sf(data = sample126, aes(fill = "Plus de 125 occurrences"), color = NA, alpha = 0.75) + # DarkRed
+  geom_sf(data = africapolitical, fill = NA, color = "#00000065", size = 1) + # Épaisseur accrue
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Bordure du Gabon épaisse
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true", height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  scale_fill_manual(name = "Nombre d'occurrences",
+                    values = c("0 occurrences" = "white",
+                               "1-10 occurrences" = "#FFD700",
+                               "11-50 occurrences" = "#FF4500",
+                               "51-100 occurrences" = "#FF0000",
+                               "101-125 occurrences" = "#FFA500",
+                               "Plus de 125 occurrences" = "#8B0000"),
+                    labels = c("0 occurrences", "1-10 occurrences", "11-50 occurrences", "51-100 occurrences", "101-125 occurrences", "Plus de 125 occurrences")) +
+  theme(axis.text = element_text(size = 14, color = "black"), 
+        axis.title = element_blank(), 
+        legend.title = element_text(size = 16), 
+        legend.text = element_text(size = 14), 
+        legend.position = "right")
+
+ggsave("Sampling_effort_image2.png", width = 11.69, height = 8.27, dpi = 600)
+```
+
+```{r Comptage nbr pixels, include=FALSE}
+new <- as.data.frame(matrix(0,nrow=nrow(grid),ncol=2))
+merged_data <- merge(grid["ID_grid"], RB_zone_grid["ID_grid"], by = "ID_grid", all.x = TRUE) #link between grid and RB_zone_grid in functio of ID_grid
+occurrences <- table(merged_data$ID_grid, useNA = "ifany")
+new$ID_grid <- grid$ID_grid
+new$occ <- as.numeric(occurrences)
+new <- new[, !(names(new) %in% c("V1", "V2"))]
+nb_lignes <- sum(new$occ >= 125) #give nbr of pixels with more than 125 occ
+
+grid_rast <- raster("~/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid_rast.tif")
+centroids <- rasterToPoints(grid_rast, spatial = TRUE)
+centroids_df <- data.frame(centroids@coords)
+
+# Histogramme du nombre de grille par tranches d'occurrences
+subset_new <- subset(new, occ >= 50) #on ne prend pas ceux avec moins de 50 occ
+subset_new$cuts <- factor(cuts, levels = c("50-100", "101-125", "126-150", "151-200", "201-250", "251-300", "301-350", "351-400", "Plus de 400")) #delimitation de categories pour y voir plus clair
+plot <- ggplot(data = subset_new, aes(x = cuts, fill = cuts)) +
+  geom_bar() +
+  geom_text(aes(label = ..count..), stat = "count", vjust = -0.5) +  #ajouter les valeurs de l'axe x
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "Occurrences", y = "Nombre de ID_grid",
+       title = "Nombre de ID_grid par catégories d'occurrences") +
+  scale_fill_manual(values = c("#1f78b4", "#33a02c", "#e31a1c", "#ff7f00", 
+                                "#6a3d9a", "#a6cee3", "#b2df8a", "#fb9a99")) +
+  theme(legend.position = "none")  # Supprimer la légende des couleurs
+ggsave("histogramme.jpg", plot = plot, width = 8, height = 6, dpi = 300)
+```
+
+```{r Grille_raster creation, include=FALSE}
+# Bout de code de Jan (creating_gabon_rasters)
+study_area <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp", crs = 4326)
+## load reference raster (with target resolution and extent)
+rast_ref <- rast("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster_grid.tif")
+grid_raster <- rast("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster_grid.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+#writeRaster(grid_raster, "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid_rast.tif")
+```

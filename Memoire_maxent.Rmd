@@ -1,0 +1,594 @@
+---
+title: "Mémoire Maxent"
+author: "Alexandre Massart"
+date: "2024-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(raster)
+library(openxlsx)
+library(readxl)
+library(gridExtra) # creation des tableaux
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+library(webshot)
+library(magrittr)
+library(tools)
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(jsonlite)
+library(knitr)
+library(sf)
+library(rgdal)
+library(RColorBrewer)
+library(plotly)
+library(broom)
+```
+
+# Retirer infos nécessaires de la modelisation
+
+```{r fichiers pour les seuils}
+dossier <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres"
+
+fichiers <- list.files(dossier, pattern = "_samplePredictions\\.csv$", full.names = TRUE)
+
+# Fonction pour extraire la valeur minimale de la colonne 'Logistic prediction' d'un fichier CSV
+extraire_min <- function(fichier) {
+  donnees <- read_csv(fichier)
+  min_prediction <- min(donnees$`Logistic prediction`, na.rm = TRUE)
+  return(min_prediction)
+}
+
+resultats <- tibble(Fichier = fichiers, Seuil_minimal = map_dbl(fichiers, extraire_min)) # Appliquer la fonction à chaque fichier et stocker les résultats dans un dataframe
+
+resultats$Fichier <- gsub(paste0("^", dossier, "/"), "", resultats$Fichier)# Supprimer le chemin et le suffixe des noms de fichiers dans la colonne 'Fichier'
+resultats$Fichier <- gsub("_samplePredictions.csv$", "", resultats$Fichier)
+resultats$Seuil_minimal <- format(resultats$Seuil_minimal, scientific = FALSE) # Formater correctement les valeurs de la colonne 'Seuil_minimal'
+print(resultats)
+#write_csv(resultats, "seuils_arbres.csv")
+```
+
+```{r Retirer sp non-modelisee}
+resultats <- read_csv("C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\seuils_arbres.csv")
+filtered_data <- resultats %>%
+  filter(`Seuil_minimal` == 0.5)
+  # mutate(Fichier = gsub("_", " ", Fichier))
+#write.xlsx(filtered_data, "filtered_arbres.xlsx")
+
+files_to_delete <- filtered_data$Fichier
+directories <- c(
+  "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output_arbres",
+  "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output\\plots"
+)
+delete_matching_files <- function(directory, patterns) { # Fonction pour supprimer les fichiers non modelisés
+  files <- list.files(directory, full.names = TRUE)
+  for (file in files) {
+    for (pattern in patterns) {
+      if (str_starts(basename(file), pattern)) {
+        file.remove(file)
+      }
+    }
+  }
+}
+for (dir in directories) { # Supprimer les fichiers correspondants dans chaque répertoire
+  delete_matching_files(dir, files_to_delete)
+}
+```
+
+# Création des couches avec et sans seuils
+
+```{r Implementation des seuils dans les couches raster}
+chemin_rasters <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres"
+chemin_rasters1 <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres/rasters_seuils"
+chemin_csv <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_arbres.csv"
+
+noms_rasters <- list.files(chemin_rasters, pattern = "\\.asc$", full.names = TRUE) # Charger les noms de fichiers raster
+noms_rasters <- tools::file_path_sans_ext(basename(noms_rasters)) # Extraire uniquement les noms de fichiers (sans le chemin ni l'extension)
+seuils <- read.csv(chemin_csv) # Charger les seuils à partir du fichier CSV
+
+# Fonction pour remplacer les valeurs dans un raster en fonction du seuil
+remplacer_valeurs <- function(raster, seuil) {
+  raster[raster < seuil] <- 0
+  raster[raster >= seuil] <- 1
+  return(raster)
+}
+
+for (i in seq_along(noms_rasters)) { # Parcourir chaque raster
+  raster_data <- raster(file.path(chemin_rasters, paste0(noms_rasters[i], ".asc"))) # Charger le raster
+  nom_espece <- noms_rasters[i] # Obtenir le nom de l'espèce
+  seuil_espece <- seuils$Seuil_minimal[seuils$Fichier == nom_espece] # Trouver le seuil correspondant à cette espèce
+  if (length(seuil_espece) == 0) { # Vérifier si le seuil a été trouvé
+    cat("Aucun seuil trouvé pour l'espèce:", nom_espece, "\n")
+  } else {
+    raster_data_modifie <- remplacer_valeurs(raster_data, seuil_espece) # Remplacer les valeurs dans le raster
+    writeRaster(raster_data_modifie, file = paste0(chemin_rasters1, "/", nom_espece, "_modifie.asc"), format = "ascii") # Sauvegarder le raster modifié
+    cat("Raster modifié pour l'espèce:", nom_espece, "\n")
+  }
+}
+```
+
+```{r Suppression de "_modifie" pour ajouter couches degradee}
+path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/output/arbres"
+# Lister tous les fichiers dans le dossier
+files <- list.files(path, full.names = TRUE)
+# Parcourir chaque fichier et renommer si nécessaire
+for (file in files) {
+  filename <- basename(file)
+  if (grepl("_modifie", filename)) { # Vérifier si le fichier contient le suffixe "_modifie"
+    new_filename <- sub("_modifie", "", filename) # Créer le nouveau nom de fichier sans le suffixe "_modifie"
+    new_filepath <- file.path(dirname(file), new_filename) # Générer le chemin complet pour le nouveau fichier
+    file.rename(file, new_filepath)
+  }
+}
+```
+
+# Préparation des données pour le html
+
+```{r Tableaux des couches utilisees dans modelisation}
+dossier_html <- "./output_arbres"
+dossier_png <- "./Cartes/Tableaux_recap/Tableaux_Couches_modelisation/arbres"
+
+fichiers_html <- list.files(dossier_html, pattern = "\\.html$", full.names = TRUE) # Obtenir la liste des fichiers HTML dans le dossier_html
+
+take_screenshot <- function(file) { # Définir la fonction pour prendre les screenshots
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 10,  # Augmenter le délai à 10 secondes ou plus si nécessaire
+          selector = "body > table:nth-child(67)")  # Sélecteur pour capturer tous les éléments <h2>
+}
+lapply(fichiers_html, take_screenshot) # Appliquer la fonction take_screenshot à chaque fichier HTML
+```
+
+```{r Tableaux des occ}
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux pour recap/Tableaux Occ/"
+
+data <- read_csv(input_file)
+data <- dplyr::select(data, -description, -habitat)
+
+data$colnam <- str_split(data$colnam, ",", simplify = TRUE)[, 1] # Extraire le texte avant le premier ";" dans la colonne 'colnam'
+tax_sp_levels <- unique(data$tax_sp_level) # Séparer les données par 'tax_sp_level'
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  table_plot <- tableGrob(subset_data, rows = NULL) # Créer un tableau avec gridExtra::tableGrob
+  p <- ggdraw() + draw_grob(table_plot) # Créer un plot avec cowplot::ggdraw
+  output_file <- file.path(output_folder, paste0("table_", tax_sp_level, ".png"))
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+```
+
+```{r Tableaux des habitats}
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux pour recap/Tableaux Habitats/new/"
+
+data <- read_csv(input_file)
+data <- dplyr::select(data, tax_sp_level, description, habitat)
+
+data$description <- str_split(data$description, ";", simplify = TRUE)[, 1] # Extraire le texte avant le premier ";" dans la colonne 'description' et 'habitat'
+data$habitat <- str_split(data$habitat, ";", simplify = TRUE)[, 1]
+tax_sp_levels <- unique(data$tax_sp_level) # Séparer les données par 'tax_sp_level'
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  subset_data$description <- factor(subset_data$description, levels = unique(subset_data$description)) # Convertir les colonnes en facteur pour conserver l'ordre des niveaux
+  subset_data$habitat <- factor(subset_data$habitat, levels = unique(subset_data$habitat))
+  subset_data$description <- str_wrap(subset_data$description, width = 30)  # ajuster la largeur au besoin
+  subset_data$habitat <- str_wrap(subset_data$habitat, width = 30)  # ajuster la largeur au besoin
+  table_plot <- tableGrob(subset_data, rows = NULL, theme = ttheme_minimal(padding = unit(c(0.5, 0.5), "cm"), base_size = 10)) # Créer un tableau avec gridExtra::tableGrob
+    p <- ggdraw() + draw_grob(table_plot) # Créer un plot avec cowplot::ggdraw
+  output_file <- file.path(output_folder, paste0("descr_", tax_sp_level, ".png"))
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+```
+
+
+# Création des recaps html
+
+```{r Creation des html reprenants toutes les infos}
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Cartes Arbres"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_arbres.csv"
+shapefile <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+descr_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux Habitats"
+table_occ_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux Occ"
+table_layers_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux_Couches_modelisation"
+
+africa_shape <- st_read(shapefile)
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE) #liste HTML dans répertoire
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  title <- html_content %>% # Extraire le titre
+    html_node("title") %>%
+    html_text()
+  table_html <- html_content %>% # Extraire le tableau 'Analysis of variable contributions'
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  seuil_value <- seuils_data %>%   # Trouver la valeur du seuil
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc")) # Charger le raster correspondant
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  raster_data <- raster(raster_file)
+  raster_df <- as.data.frame(rasterToPoints(raster_data)) # Convertir le raster en data frame pour ggplot
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  raster_plot <- ggplot() + # Créer une carte du raster avec le shapefile
+    geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+    geom_sf(data = africa_shape, fill = NA, color = "black") +
+    coord_sf(xlim = c(extent(raster_data)[1], extent(raster_data)[2]), ylim = c(extent(raster_data)[3], extent(raster_data)[4])) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  raster_plot_file <- file.path(output_dir, paste0(file_base, "_raster_plot.png"))
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png")) # Chemin de l'image correspondant au titre
+  # Définir les chemins des images supplémentaires
+  descr_image <- file.path(descr_dir, paste0("descr_", gsub(" ", "_", file_base), ".png"))
+  table_occ_image <- file.path(table_occ_dir, paste0("table_", gsub(" ", "_", file_base), ".png"))
+  table_layers_image <- file.path(table_layers_dir, paste0(file_base, ".png"))
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "  <style>\n",
+    "    .container { display: flex; justify-content: space-around; }\n",
+    "    .container img { max-width: 45%; height: auto; }\n",
+    "    .extra-images { display: block; margin-top: 20px; }\n",
+    "    .extra-images img { display: block; max-width: 100%; height: auto; margin-bottom: 10px; }\n",
+    "  </style>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <div class='container'>\n",
+    "    <div>\n",
+    "      <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "    </div>\n",
+    "    <div>\n",
+    "      <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "    </div>\n",
+    "  </div>\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Additional Layers</h2>\n",
+    if (file.exists(table_layers_image)) paste0("<img src=\"", table_layers_image, "\" alt=\"Table Layers Image\">") else "<p>Table Layers image not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <div class='extra-images'>\n",
+    if (file.exists(descr_image)) paste0("<img src=\"", descr_image, "\" alt=\"Descr Image\">") else "<p>Descr image not available</p>", "\n",
+    if (file.exists(table_occ_image)) paste0("<img src=\"", table_occ_image, "\" alt=\"Table Occ Image\">") else "<p>Table Occ image not available</p>", "\n",
+    "  </div>\n",
+    "</body>\n",
+    "</html>"
+  )
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+```
+
+
+# Stacking des cartes
+
+```{r Rasters presences pour sp non modelisees}
+species_list <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/sp_absentes2.xlsx")
+RB_abs <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_abs.csv")
+
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+CS <- 0.1 # taille des cellules en degrés décimaux
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>%
+  mutate(ID_grid = 1:length(grid)) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+RB_abs <- sf::st_as_sf(RB_abs %>% dplyr::filter(!is.na(ddlon)), coords = c("ddlon", "ddlat"), crs = 4326) #Transformation of the database
+RB_abs <- st_transform(RB_abs, crs = 5070)
+zone <- st_transform(zone, crs = 5070)
+grid <- st_transform(grid, crs = 5070)
+RB_abs <- sf::st_intersection(RB_abs, zone) #select only occurrences that are in the study area
+gc()
+presence_data <- sf::st_intersection(grid, RB_abs)
+presence_data <- st_transform(presence_data, crs = 4326) #conversion back after the function
+zone <- st_transform(zone, crs = 4326)
+grid <- st_transform(grid, crs = 4326)
+
+colnames(species_list) # Vérifiez les noms des colonnes pour s'assurer qu'ils sont corrects
+colnames(presence_data)
+
+species_list <- species_list %>% rename(species_name = taxon)
+
+# Fonction pour créer les rasters pour chaque espèce
+create_species_raster <- function(species_name, presence_data, grid, output_dir) {
+  species_data <- presence_data %>% dplyr::filter(tax_sp_level == species_name)
+  if(nrow(species_data) == 0) {
+    message(paste("Aucune donnée de présence pour l'espèce :", species_name))
+    return(NULL)
+  }
+  
+  species_grid <- grid %>% filter(ID_grid %in% species_data$ID_grid)
+  r <- raster(extent(st_bbox(grid)), res = CS)
+  r <- rasterize(species_grid, r, field = 1, background = 0)
+  output_path <- file.path(output_dir, paste0(species_name, ".asc"))
+  writeRaster(r, output_path, format = "ascii", overwrite = TRUE)
+  message(paste("Raster créé pour l'espèce :", species_name, "et enregistré à :", output_path))
+}
+
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_absentes2"
+species_list$species_name %>% unique() %>% walk(~ create_species_raster(.x, presence_data, grid, output_dir)) # Création des rasters pour chaque espèce
+```
+
+```{r Stacking}
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)# Lister tous les fichiers .asc dans le dossier
+rasters <- lapply(raster_files, raster) # Charger tous les rasters
+raster_stack <- stack(rasters) # Empiler les rasters
+total_raster <- calc(raster_stack, sum) # Additionner les valeurs des couches raster pour chaque pixel
+
+extent_of_interest <- extent(7, 17, -7, 7) # Définir l'étendue de la zone d'intérêt
+cropped_raster <- crop(total_raster, extent_of_interest) # Recadrer le raster à cette étendue
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+country_borders <- readOGR(shapefile_path) # Charger le shapefile
+colors <- colorRampPalette(c("blue", "green", "yellow", "red"))(100) # Définir les couleurs pour un dégradé de vert à jaune à rouge
+plot(cropped_raster, col = colors, main = "Total des valeurs des rasters empilés (Zone d'intérêt)")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+legend("topright", legend = round(seq(0, maxValue(cropped_raster), length.out = 10)), 
+       fill = colors[seq(1, 100, length.out = 10)], title = "Total", cex = 0.8) # Ajouter une légende
+
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de  Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/raster_stacking.tif" 
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE) # Sauvegarder le raster résultant
+```
+
+```{r Nombre d'sp dans zones defens Maxent}
+best_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+best_zones <- st_transform(best_zones, crs(raster_stack)) # Projeter les zones dans le même système de coordonnées que le raster
+best_zones_sp <- as(best_zones, "Spatial") # Convertir les objets sf en objets spatiaux pour l'utilisation avec les rasters
+masked_raster <- mask(total_raster, best_zones_sp) # Masquer le raster avec les zones définies
+extracted_values <- extract(masked_raster, best_zones_sp, fun = max, na.rm = TRUE) # Extraire les valeurs du raster dans les zones d'intérêt
+species_present <- sum(extracted_values > 0, na.rm = TRUE) # Compter nbr espèces présentes dans zones
+
+print(species_present)
+```
+
+
+```{r sp manquantes}
+# Trouver les sp manquantes entre 352 et 382
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+file_list <- list.files(path = folder_path, pattern = "*.csv", full.names = FALSE)
+file_df <- data.frame(file_names = file_list, stringsAsFactors = FALSE)
+file_df$file_names <- gsub(".asc_presence.csv", "", file_df$file_names)
+
+asc_folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_non_model"
+asc_file_list <- list.files(path = asc_folder_path, pattern = "*.asc", full.names = FALSE)
+asc_file_df <- data.frame(file_names = asc_file_list, stringsAsFactors = FALSE)
+asc_file_df$file_names <- gsub(".asc", "", asc_file_df$file_names)
+
+asc_folder_path2 <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_absentes"
+asc_file_list2 <- list.files(path = asc_folder_path2, pattern = "*.asc", full.names = FALSE)
+asc_file_df2 <- data.frame(file_names = asc_file_list2, stringsAsFactors = FALSE)
+asc_file_df2$file_names <- gsub(".asc", "", asc_file_df2$file_names)
+
+combined_df <- rbind(file_df, asc_file_df, asc_file_df2)
+
+excel_file_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx"
+taxon_df <- read_excel(excel_file_path, sheet = 1, col_names = TRUE) %>% dplyr::select(tax)
+taxon_values <- unique(taxon_df$tax)
+absent_taxon_values <- setdiff(taxon_values, combined_df$file_names)
+absent_taxon_df <- data.frame(taxon = absent_taxon_values, stringsAsFactors = FALSE)
+
+write.xlsx(absent_taxon_df, "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_absentes2.xlsx")
+```
+
+```{r sp vérif}
+dossier <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+fichiers_asc <- list.files(path = dossier, pattern = "\\.asc$", full.names = TRUE) # Liste des fichiers .asc dans le dossier
+
+df <- data.frame(Fichier_ASC = fichiers_asc) # Création d'un dataframe avec les noms des fichiers
+df$Fichier_ASC <- gsub(paste0("^", dossier, "/"), "", df$Fichier_ASC) # Enlever le chemin commun de la colonne Fichier_ASC
+df$Fichier_ASC <- gsub("\\.asc$", "", df$Fichier_ASC) # Enlever l'extension .asc de la colonne Fichier_ASC
+df$Fichier_ASC <- gsub("_modifie", "", df$Fichier_ASC) # Enlever "_modifie" de la colonne Fichier_ASC
+df$Fichier_ASC <- gsub("_", " ", df$Fichier_ASC) # Remplacer "_" par " " dans la colonne Fichier_ASC
+df$Est_Duplique <- duplicated(df$Fichier_ASC) | duplicated(df$Fichier_ASC, fromLast = TRUE) # Ajouter une colonne indiquant si le nom est dupliqué
+sp <- read_excel("~/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx")
+sp_abs <- sp %>%
+  filter(!tax %in% df$Fichier_ASC)
+```
+
+# Influence des différentes couches
+
+```{r calcul de la moyenne des influences de chaque couche}
+dossier1 <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+dossier2 <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_arbres"
+# Lister tous les fichiers HTML dans les deux dossiers
+fichiers1 <- list.files(dossier1, pattern = "\\.html$", full.names = TRUE)
+fichiers2 <- list.files(dossier2, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour lire un tableau depuis un fichier HTML
+lire_tableau <- function(fichier, css_selector) {
+  page <- read_html(fichier)
+  node <- page %>% html_node(css = css_selector)
+  if (!is.na(node)) {
+    tableau <- node %>% html_table()
+    return(tableau)
+  } else {
+    return(NULL)
+  }
+}
+
+# Lire tous les tableaux des fichiers HTML dans chaque dossier
+tableaux1 <- lapply(fichiers1, lire_tableau, css_selector = "body > table:nth-child(63)")
+tableaux2 <- lapply(fichiers2, lire_tableau, css_selector = "body > table:nth-child(67)")
+tableaux1 <- tableaux1[!sapply(tableaux1, is.null)] # Retirer les éléments NULL de la liste
+tableaux2 <- tableaux2[!sapply(tableaux2, is.null)]
+# Vérifier et nettoyer les noms des colonnes
+nettoyer_noms_colonnes <- function(tableau) {
+  if (ncol(tableau) < 2) {
+    stop("Le tableau doit avoir au moins deux colonnes.")
+  }
+  colnames(tableau)[1:2] <- c("Nom_de_la_couche_climatique", "Importance")
+  return(tableau)
+}
+
+tableaux1 <- lapply(tableaux1, nettoyer_noms_colonnes)
+tableaux2 <- lapply(tableaux2, nettoyer_noms_colonnes)
+
+combiner_tableaux <- function(tableaux) { # Combiner les tableaux dans une seule data frame
+  do.call(rbind, tableaux)
+}
+df1 <- combiner_tableaux(tableaux1)
+df2 <- combiner_tableaux(tableaux2)
+# Ajouter une colonne pour indiquer la source du tableau (dossier 1 ou 2)
+df1 <- df1 %>% mutate(Source = "Dossier1")
+df2 <- df2 %>% mutate(Source = "Dossier2")
+
+df_combined <- rbind(df1, df2) # Combiner les deux data frames
+
+# Calculer la moyenne, l'écart-type et les intervalles de confiance pour chaque couche climatique
+statistiques <- df_combined %>%
+  group_by(Nom_de_la_couche_climatique) %>%
+  summarise(
+    Moyenne_importance = mean(Importance, na.rm = TRUE),
+    Ecart_type = sd(Importance, na.rm = TRUE),
+    N = n()
+  ) %>%
+  mutate(
+    Erreur_type = Ecart_type / sqrt(N),
+    IC_inf = Moyenne_importance - qt(0.975, df = N - 1) * Erreur_type,
+    IC_sup = Moyenne_importance + qt(0.975, df = N - 1) * Erreur_type
+  )
+
+#write.csv(statistiques, "statistiques_importance.csv", row.names = FALSE)
+
+print(statistiques)
+```
+
+```{r figure importance des différentes couches}
+# Graphique en barres avec intervalle de confiance
+statistiques <- statistiques %>%
+  mutate(Nom_de_la_couche_climatique = gsub("hand_africa", "hand", Nom_de_la_couche_climatique))
+
+ggplot(statistiques, aes(x = reorder(Nom_de_la_couche_climatique, Moyenne_importance), y = Moyenne_importance)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = IC_inf, ymax = IC_sup), width = 0.2) +
+  coord_flip() +
+  labs(title = "Importance Moyenne des Variables avec IC à 95%", x = "Variable", y = "Importance Moyenne") +
+  theme_minimal()
+
+# Créer un camembert (diagramme circulaire) avec proportions
+statistiques <- statistiques %>% 
+  mutate(pct = Moyenne_importance / sum(Moyenne_importance) * 100,
+         label = paste0(Nom_de_la_couche_climatique, " (", round(pct, 1), "%)"))
+
+ggplot(statistiques, aes(x = "", y = pct, fill = Nom_de_la_couche_climatique)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +
+  labs(title = "") +
+  theme_void() +
+  theme(legend.title = element_blank())
+
+# Créer un camembert interactif (diagramme circulaire) avec plotly
+plot_ly(statistiques, labels = ~Nom_de_la_couche_climatique, values = ~Moyenne_importance, type = 'pie', textinfo = 'label+percent') %>%
+  layout(title = '')
+```
+
+```{r Couche la plus important par sp}
+## Calculer l'importance maximale par espèce
+max_importance <- df_combined %>%
+  group_by(Espece, Nom_de_la_couche_climatique) %>%
+  summarise(Max_Importance = max(Importance, na.rm = TRUE)) %>%
+  ungroup()
+
+# Identifier la couche la plus importante pour chaque espèce
+max_importance <- max_importance %>%
+  group_by(Espece) %>%
+  mutate(Couche_la_plus_importante = Nom_de_la_couche_climatique[which.max(Max_Importance)]) %>%
+  ungroup()
+
+# Compter le nombre de fois que chaque couche climatique est la plus importante pour chaque espèce
+count_most_important <- max_importance %>%
+  group_by(Nom_de_la_couche_climatique, Couche_la_plus_importante) %>%
+  summarise(Count = sum(Couche_la_plus_importante == Nom_de_la_couche_climatique))
+
+print(count_most_important)
+```
+
+```{r nombre de fois que la couche est >25%}
+# Ajouter une colonne indiquant si l'importance dépasse 25%
+df_combined <- df_combined %>%
+  mutate(Depasse_25 = ifelse(Importance > 25, 1, 0))
+
+# Calculer le nombre de fois que chaque couche dépasse 25%
+depassements <- df_combined %>%
+  group_by(Nom_de_la_couche_climatique) %>%
+  summarise(Nombre_depasse_25 = sum(Depasse_25, na.rm = TRUE)) %>%
+  mutate(Nom_de_la_couche_climatique = gsub("hand_africa", "hand", Nom_de_la_couche_climatique))
+
+# Graphique du nombre de dépassements
+graphique_depassements <- ggplot(depassements, aes(x = reorder(Nom_de_la_couche_climatique, Nombre_depasse_25), y = Nombre_depasse_25)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "", x = "Variable", y = "Nombre de Dépassements") +
+  theme_minimal()
+ggsave("nombre_depassements_25.png", plot = graphique_depassements, width = 10, height = 6)
+```
+

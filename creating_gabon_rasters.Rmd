@@ -1,0 +1,826 @@
+---
+title: "Creating Gabon predictor rasters"
+author: "Jan Lukas Klein"
+date: "2024-04-09"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+Code de Jan, modifié (pour l'utilisation) par Alexandre
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library, echo=FALSE}
+library(mapview)
+library(terra)
+library(dplyr)
+library(sf)
+library(raster)
+library(ade4)
+library(factoextra)
+library(tictoc)
+```
+
+```{r load study area, echo=FALSE}
+study_area <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp", crs = 4326) # Afrique_centrale
+mapview(study_area) # visualize study area
+
+## load reference raster (with target resolution and extent)
+rast_ref <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid_rast.tif")
+
+## set cutoff value for explained variance to retain PCaxes. This value will determine the PCaxes cept for further analyses.
+cutoff <- 85
+
+## Specify study area for dynamic file saving
+studyareaname <- "africa"
+```
+
+```{r single raster layers, echo=FALSE}
+hand <- raster("D:/Mémoire_documents_supps/Rasters Internet/Merit Hydro HAND/HAND2.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+#writeRaster(hand, "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Environmental layers/hand_africa.asc")
+
+api <- rast("D:/Mémoire_documents_supps/Rasters Gabon/Anthropogenic Pressure Index (Réjou-Méchain et al,, 2021)/Anthropogenicpressure.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+api <- api["2"]
+names(api) <- "API"
+#writeRaster(api, filename = paste0(studyareaname,"_api.tif"), overwrite = TRUE)
+```
+
+```{r Creation ISRIC soil grids, echo=FALSE}
+
+## Acid sub-soils grade
+ACDWRB <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/ACDWRB_M_ss_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+#writeRaster(ACDWRB, filename = "ACDWRB_africa.tif")
+
+## Available soil water capacity (volumetric fraction) for h2
+AWCh2_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCh2_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCh2_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCh2_M_sl2_250m_ll.tif")%>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCh2_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCh2_M_sl3_250m_ll.tif")%>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCh2_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCh2_M_sl4_250m_ll.tif")%>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCh2_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCh2_M_sl5_250m_ll.tif")%>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCh2_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCh2_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for AWCh2
+AWCh2 <- mean(AWCh2_sl1, AWCh2_sl2, AWCh2_sl3, AWCh2_sl4, AWCh2_sl5, AWCh2_sl6)
+rm(AWCh2_sl1, AWCh2_sl2, AWCh2_sl3, AWCh2_sl4, AWCh2_sl5, AWCh2_sl6)
+#writeRaster(AWCh2, filename = "AWCh2_africa.tif")
+
+
+## Saturated water content (volumetric fraction) for tS
+AWCtS_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCtS_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCtS_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCtS_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCtS_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCtS_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCtS_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCtS_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCtS_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCtS_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+AWCtS_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/AWCtS_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for AWCtS
+AWCtS <- mean(AWCtS_sl1, AWCtS_sl2, AWCtS_sl3, AWCtS_sl4, AWCtS_sl5, AWCtS_sl6)
+rm(AWCtS_sl1, AWCtS_sl2, AWCtS_sl3, AWCtS_sl4, AWCtS_sl5, AWCtS_sl6)
+#writeRaster(AWCtS, filename = "AWCtS_africa.tif")
+
+
+## Depth to bedrock (R horizon) up to 200 cm
+BDRICM <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BDRICM_M_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+#writeRaster(BDRICM, filename = "BDRICM_africa.tif")
+
+## Probability of occurrence of R horizon
+BDRLOG <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BDRLOG_M_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+#writeRaster(BDRLOG, filename = "BDRLOG_africa.tif")
+
+## Absolute depth to bedrock (in cm)
+BDTICM <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BDTICM_M_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+#writeRaster(BDTICM, filename = "BDTICM_africa.tif")
+
+## Bulk density (fine earth) in kg / cubic-meter
+BLDFIE_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BLDFIE_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+BLDFIE_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BLDFIE_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+BLDFIE_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BLDFIE_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+BLDFIE_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BLDFIE_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+BLDFIE_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BLDFIE_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+BLDFIE_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/BLDFIE_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+
+# create mean for AWCtS
+BLDFIE <- mean(BLDFIE_sl1, BLDFIE_sl2, BLDFIE_sl3, BLDFIE_sl4, BLDFIE_sl5, BLDFIE_sl6)
+rm(BLDFIE_sl1, BLDFIE_sl2, BLDFIE_sl3, BLDFIE_sl4, BLDFIE_sl5, BLDFIE_sl6)
+#writeRaster(BLDFIE, filename = "BLDFIE_africa.tif")
+
+## Cation exchange capacity of soil in cmolc/kg
+CECSOL_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CECSOL_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CECSOL_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CECSOL_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CECSOL_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CECSOL_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CECSOL_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CECSOL_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CECSOL_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CECSOL_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CECSOL_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CECSOL_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for AWCtS
+CECSOL <- mean(CECSOL_sl1, CECSOL_sl2, CECSOL_sl3, CECSOL_sl4, CECSOL_sl5, CECSOL_sl6)
+rm(CECSOL_sl1, CECSOL_sl2, CECSOL_sl3, CECSOL_sl4, CECSOL_sl5, CECSOL_sl6)
+#writeRaster(CECSOL, filename = "CECSOL_africa.tif")
+
+## Clay content (0-2 micro meter) mass fraction in %
+CLYPPT_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CLYPPT_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CLYPPT_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CLYPPT_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CLYPPT_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CLYPPT_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CLYPPT_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CLYPPT_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CLYPPT_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CLYPPT_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CLYPPT_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CLYPPT_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for CLYPPT
+CLYPPT <- mean(CLYPPT_sl1, CLYPPT_sl2, CLYPPT_sl3, CLYPPT_sl4, CLYPPT_sl5, CLYPPT_sl6)
+rm(CLYPPT_sl1, CLYPPT_sl2, CLYPPT_sl3, CLYPPT_sl4, CLYPPT_sl5, CLYPPT_sl6)
+#writeRaster(CLYPPT, filename = "CLYPPT_africa.tif")
+
+## Coarse fragments volumetric in %
+# CRFVOL_sl1 <- rast("/Volumes/TOSHIBA EXT/Gabon raster data/ISRIC Soil Database/CRFVOL_M_sl1_250m_ll.tif") %>% 
+#   crop(., extent(study_area)) %>% # crop out study area
+#   mask(., study_area)
+CRFVOL_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CRFVOL_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CRFVOL_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CRFVOL_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CRFVOL_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CRFVOL_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CRFVOL_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CRFVOL_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+CRFVOL_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/CRFVOL_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for CRFVOL
+CRFVOL <- mean(CRFVOL_sl2, CRFVOL_sl3, CRFVOL_sl4, CRFVOL_sl5, CRFVOL_sl6)
+rm(CRFVOL_sl2, CRFVOL_sl3, CRFVOL_sl4, CRFVOL_sl5, CRFVOL_sl6)
+#writeRaster(CRFVOL, filename = "CRFVOL_africa.tif")
+
+## Soil organic carbon density in kg per cubic-m
+OCDENS_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/OCDENS_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+OCDENS_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/OCDENS_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+OCDENS_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/OCDENS_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+OCDENS_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/OCDENS_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+OCDENS_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/OCDENS_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+OCDENS_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/OCDENS_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for OCDENS
+OCDENS <- mean(OCDENS_sl1, OCDENS_sl2, OCDENS_sl3, OCDENS_sl4, OCDENS_sl5, OCDENS_sl6)
+rm(OCDENS_sl1, OCDENS_sl2, OCDENS_sl3, OCDENS_sl4, OCDENS_sl5, OCDENS_sl6)
+#writeRaster(OCDENS, filename = "OCDENS_africa.tif")
+
+## Soil pH x 10 in H2O
+PHIHOX_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/PHIHOX_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+PHIHOX_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/PHIHOX_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+PHIHOX_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/PHIHOX_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+PHIHOX_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/PHIHOX_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+PHIHOX_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/PHIHOX_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+PHIHOX_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/PHIHOX_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for PHIHOX
+PHIHOX <- mean(PHIHOX_sl1, PHIHOX_sl2, PHIHOX_sl3, PHIHOX_sl4, PHIHOX_sl5, PHIHOX_sl6)
+rm(PHIHOX_sl1, PHIHOX_sl2, PHIHOX_sl3, PHIHOX_sl4, PHIHOX_sl5, PHIHOX_sl6)
+#writeRaster(PHIHOX, filename = "PHIHOX_africa.tif")
+
+## Silt content (2-50 micro meter) mass fraction in %
+# SLTPPT_sl1 <- rast("/Volumes/TOSHIBA EXT/Gabon raster data/ISRIC Soil Database/SLTPPT_M_sl1_250m_ll.tif") %>% 
+#   crop(., extent(study_area)) %>% # crop out study area
+#   mask(., study_area)
+SLTPPT_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SLTPPT_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SLTPPT_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SLTPPT_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SLTPPT_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SLTPPT_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SLTPPT_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SLTPPT_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SLTPPT_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SLTPPT_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for SLTPPT
+SLTPPT <- mean(SLTPPT_sl2, SLTPPT_sl3, SLTPPT_sl4, SLTPPT_sl5, SLTPPT_sl6)
+rm(SLTPPT_sl2, SLTPPT_sl3, SLTPPT_sl4, SLTPPT_sl5, SLTPPT_sl6)
+#writeRaster(SLTPPT, filename = "SLTPPT_africa.tif")
+
+
+## Sand content (50-2000 micro meter) mass fraction in %
+SNDPPT_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SNDPPT_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SNDPPT_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SNDPPT_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SNDPPT_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SNDPPT_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SNDPPT_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SNDPPT_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SNDPPT_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SNDPPT_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+SNDPPT_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/SNDPPT_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for SNTPPT
+SNDPPT <- mean(SNDPPT_sl1, SNDPPT_sl2, SNDPPT_sl3, SNDPPT_sl4, SNDPPT_sl5, SNDPPT_sl6)
+rm(SNDPPT_sl1, SNDPPT_sl2, SNDPPT_sl3, SNDPPT_sl4, SNDPPT_sl5, SNDPPT_sl6)
+#writeRaster(SNDPPT, filename = "SNDPPT_africa.tif")
+
+
+## Available soil water capacity (volumetric fraction) until wilting point
+WWP_sl1 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/WWP_M_sl1_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+WWP_sl2 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/WWP_M_sl2_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+WWP_sl3 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/WWP_M_sl3_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+WWP_sl4 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/WWP_M_sl4_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+WWP_sl5 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/WWP_M_sl5_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+WWP_sl6 <- rast("D:/Mémoire_documents_supps/Rasters Gabon/ISRIC Soil Database/WWP_M_sl6_250m_ll.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)
+
+# create mean for WWP
+WWP <- mean(WWP_sl1, WWP_sl2, WWP_sl3, WWP_sl4, WWP_sl5, WWP_sl6)
+rm(WWP_sl1, WWP_sl2, WWP_sl3, WWP_sl4, WWP_sl5, WWP_sl6)
+#writeRaster(WWP, filename = "WWP_africa.tif")
+```
+
+```{r ISRIC soil grids, echo=FALSE}
+# Download datasets if already compiled before 
+ACDWRB <- rast("D:/Mémoire_documents_supps/Rasters compilés/ACDWRB_africa.tif")
+AWCh2 <- rast("D:/Mémoire_documents_supps/Rasters compilés/AWCh2_africa.tif")
+AWCtS <- rast("D:/Mémoire_documents_supps/Rasters compilés/AWCtS_africa.tif")
+BDRICM <- rast("D:/Mémoire_documents_supps/Rasters compilés/BDRICM_africa.tif")
+BDRLOG <- rast("D:/Mémoire_documents_supps/Rasters compilés/BDRLOG_africa.tif")
+BDTICM <- rast("D:/Mémoire_documents_supps/Rasters compilés/BDTICM_africa.tif")
+BLDFIE <- rast("D:/Mémoire_documents_supps/Rasters compilés/BLDFIE_africa.tif")
+CECSOL <- rast("D:/Mémoire_documents_supps/Rasters compilés/CECSOL_africa.tif")
+CLYPPT <- rast("D:/Mémoire_documents_supps/Rasters compilés/CLYPPT_africa.tif")
+CRFVOL <- rast("D:/Mémoire_documents_supps/Rasters compilés/CRFVOL_africa.tif")
+OCDENS <- rast("D:/Mémoire_documents_supps/Rasters compilés/OCDENS_africa.tif")
+PHIHOX <- rast("D:/Mémoire_documents_supps/Rasters compilés/PHIHOX_africa.tif")
+SLTPPT <- rast("D:/Mémoire_documents_supps/Rasters compilés/SLTPPT_africa.tif")
+SNDPPT <- rast("D:/Mémoire_documents_supps/Rasters compilés/SNDPPT_africa.tif")
+WWP <- rast("D:/Mémoire_documents_supps/Rasters compilés/WWP_africa.tif")
+
+
+#### Run PCA on soil dataset and produce PCaxis rasters ####
+soil <- c(ACDWRB, AWCh2, AWCtS, BDRICM, BDRLOG, BDTICM, BLDFIE, CECSOL, CLYPPT, CRFVOL, OCDENS, PHIHOX, SLTPPT, SNDPPT, WWP)
+names(soil) <- c("ACDWRB", "AWCh2", "AWCtS", "BDRICM", "BDRLOG", "BDTICM", "BLDFIE", "CECSOL", "CLYPPT", "CRFVOL", "OCDENS", "PHIHOX", "SLTPPT", "SNDPPT", "WWP")
+
+soil <- as(stack(soil), "SpatialPixelsDataFrame")
+class(soil) # See if it worked
+
+gc()
+## Run PCA
+## Run ade4 dudi.pca() function, scaling and centering implemented
+res.pca <- dudi.pca(soil@data,
+                    scale = TRUE,
+                    center = TRUE,
+                    scannf = FALSE,   # Hide scree plot
+                    nf = 10           # Number of components kept in the results
+                    )
+
+fviz_pca_var(res.pca,
+             axes = c(1, 2),  # Afficher les dimensions 1 et 2
+             col.var = "cos2", # Color by the quality of representation
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
+
+## visualize eigenvalues
+fviz_eig(res.pca)
+
+## get eigenvalues and select PCaxes with cutoff threshold value
+soil_pcaxes <- get_eigenvalue(res.pca) %>% 
+  filter(cumulative.variance.percent < cutoff)
+
+soil_cutoff <- nrow(soil_pcaxes)
+gc()
+# get site scores (site = raster cell)
+tic()
+res.ind <- get_pca_ind(res.pca) # 1h15 for ISRIC soil dataset
+toc()
+soil_sitescores <- res.ind$coord[1:soil_cutoff] # PC eigenvalues
+
+soil@data <- soil_sitescores
+gc()
+
+## transform climate PCaxes spdf to raster
+soil_pca_rast <- rast(soil)
+soil_pca_rast <- soil_pca_rast %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+names(soil_pca_rast) <- paste0(rep("soilPC"), 1:ncol(soil@data))
+plot(soil_pca_rast)
+#writeRaster(soil_pca_rast, filename = paste0(studyareaname,"_soil_isric_pca.tif"))
+
+rm(ACDWRB, AWCh2, AWCtS, BDRICM, BDRLOG, BDTICM, BLDFIE, CECSOL, CLYPPT, CRFVOL, OCDENS, PHIHOX, SLTPPT, SNDPPT, WWP)
+```
+
+```{r Worldclim Bioclim dataset, echo=FALSE}
+## Load bioclimatic variables
+bio1 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio2 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_2.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio3 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_3.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio4 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_4.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio5 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_5.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio6 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_6.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio7 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_7.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio8 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_8.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio9 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_9.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio10 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_10.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio11 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_11.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio12 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_12.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio13 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_13.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio14 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_14.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio15 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_15.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio16 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_16.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio17 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_17.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio18 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_18.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio19 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_19.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+
+
+#### Run PCA on bioclim dataset and produce PCaxis rasters ####
+clim <- c(bio1, bio2, bio3, bio4, bio5, bio6, bio7, bio8, bio9, bio10, bio11, bio12, bio13, bio14, bio15, bio16, bio17, bio18, bio19)
+names(clim) <- paste0(rep("bio"), 1:nlyr(clim))
+
+clim <- as(stack(clim), "SpatialPixelsDataFrame")
+class(clim) # See if it worked
+
+
+## Run PCA
+## Run ade4 dudi.pca() function, scaling and centering implemented
+res.pca <- dudi.pca(clim@data,
+                    scale = TRUE,
+                    center = TRUE,
+                    scannf = FALSE,   # Not hide scree plot
+                    nf = 10           # Number of components kept in the results
+                    )
+
+fviz_pca_var(res.pca,
+             axes = c(1, 2),  # Afficher les dimensions 1 et 2
+             col.var = "cos2", # Colorer en fonction de la qualité de représentation
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Éviter les chevauchements de texte
+             )
+
+## visualize eigenvalues
+fviz_eig(res.pca)
+
+## get eigenvalues and select PCaxes with cutoff threshold value
+clim_pcaxes <- get_eigenvalue(res.pca) %>% 
+  filter(cumulative.variance.percent < cutoff)
+
+clim_cutoff <- nrow(clim_pcaxes)
+
+# get site scores (site = raster cell)
+res.ind <- get_pca_ind(res.pca) # 10 mins for bioclim dataset
+clim_sitescores <- res.ind$coord[1:clim_cutoff] # PC eigenvalues
+
+clim@data <- clim_sitescores
+
+## transform climate PCaxes spdf to raster
+clim_pca_rast <- rast(clim)
+names(clim_pca_rast) <- paste0(rep("climPC"), 1:ncol(clim@data))
+plot(clim_pca_rast)
+#writeRaster(clim_pca_rast, filename = paste0(studyareaname,"_bioclim_worldclim_pca.tif"))
+
+rm(clim, bio1, bio2, bio3, bio4, bio5, bio6, bio7, bio8, bio9, bio10, bio11, bio12, bio13, bio14, bio15, bio16, bio17, bio18, bio19)
+```
+
+```{r My variables, echo=FALSE}
+## Load bioclimatic variables
+bio1 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif") %>%
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio2 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_2.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio4 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_4.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio7 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_7.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio12 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_12.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio16 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_16.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+bio17 <- rast("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_17.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+hand <- rast("D:/Mémoire_documents_supps/Rasters Internet/Merit Hydro HAND/HAND2.tif")%>% # crop out study area
+  mask(., study_area)%>%
+  resample(., rast_ref)
+#writeRaster(hand, "D:/Mémoire_documents_supps/Rasters compilés/hand_africa.tif") 
+
+CLYPPT <- rast("D:/Mémoire_documents_supps/Rasters compilés/CLYPPT.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)%>%
+  resample(., rast_ref)
+#writeRaster(CLYPPT, "D:/Mémoire_documents_supps/Rasters compilés/CLYPPT_africa.tif")
+SNDPPT <- rast("D:/Mémoire_documents_supps/Rasters compilés/SNDPPT.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area) %>%
+  resample(., rast_ref)
+#writeRaster(SNDPPT, "D:/Mémoire_documents_supps/Rasters compilés/SNDPPT_africa.tif")
+BDTICM <- rast("D:/Mémoire_documents_supps/Rasters compilés/BDTICM.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)%>%
+  resample(., rast_ref)
+#writeRaster(BDTICM, "D:/Mémoire_documents_supps/Rasters compilés/BDTICM_africa.tif")
+CECSOL <- rast("D:/Mémoire_documents_supps/Rasters compilés/CECSOL.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)%>%
+  resample(., rast_ref)
+#writeRaster(CECSOL, "D:/Mémoire_documents_supps/Rasters compilés/CECSOL_africa.tif")
+SLTPPT <- rast("D:/Mémoire_documents_supps/Rasters compilés/SLTPPT.tif") %>% 
+  crop(., extent(study_area)) %>% # crop out study area
+  mask(., study_area)%>%
+  resample(., rast_ref)
+#writeRaster(SLTPPT, "D:/Mémoire_documents_supps/Rasters compilés/SLTPPT_africa.tif")
+
+# Run PCA on bioclim dataset and produce PCaxis rasters
+tot <- c(bio1, bio2, bio4, bio7, bio12, bio16, bio17, hand, CLYPPT, SNDPPT, BDTICM, CECSOL, SLTPPT, landcov)
+names(tot) <- c("bio1", "bio2", "bio4", "bio7", "bio12", "bio16", "bio17", "hand",  "CLYPPT", "SNDPPT", "BDTICM", "CECSOL", "SLTPPT", "landcov")
+
+tot <- as(stack(tot), "SpatialPixelsDataFrame")
+class(tot) # See if it worked
+
+tot@data <- na.omit(tot@data)
+
+## Run PCA
+## Run ade4 dudi.pca() function, scaling and centering implemented
+res.pca <- dudi.pca(tot@data,
+                    scale = TRUE,
+                    center = TRUE,
+                    scannf = FALSE,   # Not hide scree plot
+                    nf = 10           # Number of components kept in the results
+                    )
+
+fviz_pca_var(res.pca,
+             axes = c(1, 2),  # Afficher les dimensions 1 et 2
+             col.var = "cos2", # Colorer en fonction de la qualité de représentation
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Éviter les chevauchements de texte
+             )
+
+## visualize eigenvalues
+fviz_eig(res.pca)
+
+## get eigenvalues and select PCaxes with cutoff threshold value
+clim_pcaxes <- get_eigenvalue(res.pca) %>% 
+  filter(cumulative.variance.percent < cutoff)
+
+clim_cutoff <- nrow(clim_pcaxes)
+
+# get site scores (site = raster cell)
+res.ind <- get_pca_ind(res.pca) # 10 mins for bioclim dataset
+clim_sitescores <- res.ind$coord[1:clim_cutoff] # PC eigenvalues
+
+tot@data <- clim_sitescores
+
+## transform climate PCaxes spdf to raster
+clim_pca_rast <- rast(tot)
+names(clim_pca_rast) <- paste0(rep("climPC"), 1:ncol(tot@data))
+plot(clim_pca_rast)
+```
+
+```{r Assemble predictor dataset, echo=FALSE}
+gc()
+soil <- rast("africa_soil_isric_pca.tif")
+clim <- rast("africa_bioclim_worldclim_pca.tif")
+api <- rast("africa_api.tif")
+
+allPred <- c(clim, soil, api)
+
+# Synchronize the NA values. This is the option for terra package use (formal class SpatRaster)
+allPred2 <- any(is.na(allPred))
+allPred <- mask(allPred, allPred2, maskvalue=1)
+rm(allPred2)
+plot(allPred)
+
+## transform to Spatial Pixels Dataframe
+spdf_allPred_gabon <- as(stack(allPred), "SpatialPixelsDataFrame")
+#saveRDS(spdf_allPred_gabon, file = paste0("spdf_allPred_", studyareaname))
+```
+
+```{r Images des rasters}
+# Charger les bibliothèques nécessaires
+library(raster)
+library(ggplot2)
+library(gridExtra)
+
+# Dictionnaire des titres (ajout de \n pour les sauts de ligne)
+titles <- list(
+  "bio1_africa" = "Température\nmoyenne annuelle",
+  "bio2_africa" = "Moyenne de\nl’amplitude journalière\nde température",
+  "bio4_africa" = "Température\nsaisonnière",
+  "bio7_africa" = "Amplitude de\ntempérature annuelle",
+  "bio12_africa" = "Précipitations\nannuelles",
+  "bio16_africa" = "Précipitations du\ntrimestre le plus humide",
+  "bio17_africa" = "Précipitations du\ntrimestre le plus sec",
+  "CLYPPT_africa" = "Teneur en argile\n(0-2 micromètres), fraction\nde masse en %",
+  "SNDPPT_africa" = "Teneur en sable\n(50-2000 micromètres), fraction\nde masse en %",
+  "SLTPPT_africa" = "Teneur en limon\n(2-50 micromètres), fraction\nde masse en %",
+  "BDTICM_africa" = "Profondeur absolue\ndu sol jusqu’à la roche-mère",
+  "CECSOL_africa" = "Capacité d’échange\ncationique du sol (cmolc/kg)",
+  "hand_africa" = "Hauteur au-dessus\nde la rivière"
+)
+
+# Chemins des dossiers
+input_dir <- "D:/Mémoire_documents_supps/Rasters compilés/good"
+output_dir <- "D:/Mémoire_documents_supps/Rasters compilés/images rasters"
+
+# Créer le dossier de sortie si nécessaire
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# Lister les fichiers .tif dans le dossier d'entrée
+tif_files <- list.files(input_dir, pattern = "\\.tif$", full.names = TRUE)
+
+# Fonction pour générer les graphiques
+generate_plot <- function(file_path) {
+  # Charger le raster
+  raster_layer <- raster(file_path)
+  
+  # Extraire le nom du fichier sans extension
+  file_name <- tools::file_path_sans_ext(basename(file_path))
+  
+  # Obtenir le titre correspondant
+  title <- titles[[file_name]]
+  
+  # Créer un dataframe pour ggplot
+  df <- as.data.frame(raster::rasterToPoints(raster_layer))
+  colnames(df) <- c("x", "y", "value")
+  
+  # Générer le graphique
+  p <- ggplot(df, aes(x = x, y = y, fill = value)) +
+    geom_raster() +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    ggtitle(paste(file_name, "-", title)) +
+    theme(plot.title = element_text(hjust = 0.5, size = 10),  # Ajuster la taille du titre
+          axis.title = element_blank(),  # Supprimer les titres des axes
+          axis.text = element_blank(),   # Supprimer le texte des axes
+          axis.ticks = element_blank(),  # Supprimer les ticks des axes
+          panel.grid = element_blank(),  # Supprimer la grille
+          legend.position = "bottom")    # Placer la légende en bas
+  
+  return(p)
+}
+
+# Générer tous les graphiques
+plots <- lapply(tif_files, generate_plot)
+
+# Diviser les graphiques en groupes de 8 pour les images
+n_plots <- length(plots)
+plots_split <- split(plots, ceiling(seq_along(plots) / 8))
+
+# Sauvegarder les graphiques en images de 8 graphiques chacune
+for (i in seq_along(plots_split)) {
+  output_file <- file.path(output_dir, paste0("combined_image", i, ".png"))
+  ggsave(output_file, arrangeGrob(grobs = plots_split[[i]], ncol = 4, nrow = 2), width = 14, height = 10, dpi = 300)
+}
+
+print("Les images raster ont été générées et sauvegardées avec succès.")
+```
+
+```{r Compilation images ACP}
+# Charger les packages
+library(gridExtra)
+library(magick)
+library(grid)
+
+# Définir le chemin vers le dossier contenant les images
+image_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Bioclim"
+
+# Lire les images
+image_files <- list.files(image_folder, full.names = TRUE)
+images <- lapply(image_files, image_read)
+
+# Convertir les images en objets raster pour grid.arrange
+raster_images <- lapply(images, as.raster)
+
+# Créer une liste de grobs (graphical objects) pour grid.arrange
+grob_images <- lapply(raster_images, grid::rasterGrob)
+
+# Définir le nombre de colonnes et de lignes pour afficher les images
+ncol <- 3
+nrow <- 2
+
+# Diviser les images en groupes selon la disposition souhaitée (3 colonnes, 2 lignes)
+images_split <- split(grob_images, ceiling(seq_along(grob_images) / (ncol * nrow)))
+
+# Créer un dossier de sortie pour les images combinées
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Combined"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# Sauvegarder les images en fichiers PNG en préservant les proportions
+for (i in seq_along(images_split)) {
+  output_file <- file.path(output_dir, paste0("combined_image", i, ".png"))
+  
+  # Créer la grille
+  g <- arrangeGrob(grobs = images_split[[i]], ncol = ncol, nrow = nrow)
+  
+  # Calculer la taille du canevas en fonction des proportions des images originales
+  image_width <- image_info(images[[1]])$width
+  image_height <- image_info(images[[1]])$height
+  
+  # Calculer la largeur et la hauteur totales du canevas en tenant compte du nombre de colonnes et de lignes
+  canvas_width <- image_width * ncol
+  canvas_height <- image_height * nrow
+  
+  # Sauvegarder l'image combinée avec les dimensions calculées
+  ggsave(output_file, plot = g, width = canvas_width/100, height = canvas_height/100, dpi = 300)
+}
+
+print("Les images combinées ont été générées et sauvegardées avec succès.")
+```
+
