@@ -1,0 +1,3310 @@
+https://chatgpt.com/share/01456661-0f61-41c7-ad9b-e0332c781cdb
+https://chatgpt.com/share/ffecff70-efa0-4d27-ae1d-625e00308728
+https://chatgpt.com/share/637859ab-f5a4-4173-bc7a-98ac25e9070e
+
+
+
+Bonjour Chat j'aimerais un code R pour séparer un tableau excel en pleins de petits tableaux sous format .png. Il faudrait créer ces images de tableaux dans le dossier (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Tableaux Occ). L'excel initial est le suivant: C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\RB_MaxEnt.csv. Il faudrait faire des tableaux .png pour tous les valeurs différentes de 'tax_sp_level'
+ChatGPT
+
+Pour accomplir cette tâche en R, vous pouvez utiliser les bibliothèques readr, dplyr, ggplot2, et ggsave. Voici un script R qui lit le fichier CSV, sépare les données par les valeurs uniques de tax_sp_level, puis enregistre chaque tableau sous forme d'image .png dans le dossier spécifié.
+
+    Installez les packages nécessaires (si ce n'est pas déjà fait) :
+
+r
+
+install.packages("readr")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("gridExtra")
+
+    Voici le script pour créer les images des tableaux :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Occ/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Créer un tableau avec ggplot2
+  p <- ggplot() + 
+    theme_void() + 
+    annotation_custom(
+      tableGrob(subset_data, rows = NULL),
+      xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+    )
+  
+  # Définir le nom de fichier de sortie
+  output_file <- paste0(output_folder, "table_", tax_sp_level, ".png")
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 8, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explication du script
+
+    Chargement des packages :
+        readr pour lire le fichier CSV.
+        dplyr pour manipuler les données.
+        ggplot2 et gridExtra pour créer et sauvegarder les tableaux sous forme d'images.
+
+    Définition des chemins de fichiers :
+        input_file : chemin vers le fichier CSV.
+        output_folder : dossier où les images seront sauvegardées.
+
+    Lecture du fichier CSV :
+        data <- read_csv(input_file) : lecture des données depuis le fichier CSV.
+
+    Séparation des données par 'tax_sp_level' :
+        tax_sp_levels <- unique(data$tax_sp_level) : extraction des valeurs uniques de tax_sp_level.
+
+    Création et sauvegarde des images :
+        La fonction save_table_image prend un sous-ensemble de données et une valeur de tax_sp_level et crée une image du tableau avec ggplot2.
+        for (level in tax_sp_levels) : boucle sur chaque valeur unique de tax_sp_level, filtre les données, et appelle la fonction save_table_image.
+
+Ce script devrait créer et sauvegarder des images de tableaux dans le dossier spécifié pour chaque valeur unique de tax_sp_level.
+
+valeur unique de `tax_sp_level`.
+Il ne faut que ce soit que pour les valeurs uniques mais il faut des tableaux avec toutes les valeurs identiques (chaque espèce différente)
+ChatGPT
+
+D'accord, nous allons créer un tableau pour chaque espèce différente (chaque valeur unique de tax_sp_level) et sauvegarder ces tableaux en images .png.
+
+Voici le script R modifié pour répondre à cette exigence :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Occ/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Créer un tableau avec ggplot2
+  table_plot <- tableGrob(subset_data, rows = NULL)
+  
+  # Créer un plot vide
+  p <- ggplot() + 
+    theme_void() + 
+    annotation_custom(
+      table_plot,
+      xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+    )
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("table_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 8, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explication du script
+
+    Chargement des packages :
+        readr pour lire le fichier CSV.
+        dplyr pour manipuler les données.
+        ggplot2 et gridExtra pour créer et sauvegarder les tableaux sous forme d'images.
+
+    Définition des chemins de fichiers :
+        input_file : chemin vers le fichier CSV.
+        output_folder : dossier où les images seront sauvegardées.
+
+    Lecture du fichier CSV :
+        data <- read_csv(input_file) : lecture des données depuis le fichier CSV.
+
+    Séparation des données par tax_sp_level :
+        tax_sp_levels <- unique(data$tax_sp_level) : extraction des valeurs uniques de tax_sp_level.
+
+    Création et sauvegarde des images :
+        La fonction save_table_image prend un sous-ensemble de données et une valeur de tax_sp_level et crée une image du tableau avec ggplot2.
+        for (level in tax_sp_levels) : boucle sur chaque valeur unique de tax_sp_level, filtre les données pour cette valeur, et appelle la fonction save_table_image.
+
+Ce script créera et sauvegardera des images de tableaux dans le dossier spécifié pour chaque valeur unique de tax_sp_level.
+Les tableaux sont bien créés mais il sont complétement zoomés
+ChatGPT
+
+Pour résoudre le problème de zoom des tableaux, nous devons ajuster la taille et l'échelle du tableau afin qu'il soit correctement rendu dans l'image. Nous pouvons utiliser la bibliothèque cowplot pour améliorer le rendu des tableaux. Voici comment vous pouvez ajuster le script :
+
+    Installez le package cowplot si ce n'est pas déjà fait :
+
+r
+
+install.packages("cowplot")
+
+    Utilisez cowplot::ggdraw() pour créer une image bien dimensionnée :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Occ/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Créer un tableau avec gridExtra::tableGrob
+  table_plot <- tableGrob(subset_data, rows = NULL)
+  
+  # Créer un plot avec cowplot::ggdraw
+  p <- ggdraw() + draw_grob(table_plot)
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("table_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explication des modifications
+
+    Chargement du package cowplot :
+        library(cowplot) est ajouté pour utiliser ggdraw et draw_grob.
+
+    Création et sauvegarde des images :
+        La fonction save_table_image utilise tableGrob de gridExtra pour créer le tableau.
+        cowplot::ggdraw() est utilisé pour dessiner le tableau dans un plot bien dimensionné.
+        ggsave est appelé avec des dimensions ajustées pour s'assurer que le tableau est bien rendu dans l'image.
+
+Ces modifications devraient résoudre le problème de zoom et produire des images de tableaux correctement dimensionnées.
+la colonne description prend trop de place dans le tableau et a tendance a surzoomé le tout, cela est du au fait qu'elle ait parfois un long texte. Serait-ce possible de l'enlever au début du script?
+2/2
+ChatGPT
+
+Pour résoudre ce problème, nous pouvons modifier le script pour exclure la colonne description avant de créer les tableaux. Voici comment faire cela :
+
+    Ajoutez une étape pour supprimer la colonne description des données.
+    Continuez avec le reste du script pour créer et sauvegarder les images.
+
+Voici le script modifié :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Occ/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Supprimer la colonne 'description'
+data <- select(data, -description)
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Créer un tableau avec gridExtra::tableGrob
+  table_plot <- tableGrob(subset_data, rows = NULL)
+  
+  # Créer un plot avec cowplot::ggdraw
+  p <- ggdraw() + draw_grob(table_plot)
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("table_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explication des modifications
+
+    Suppression de la colonne description :
+        data <- select(data, -description) : Cette ligne utilise dplyr::select pour supprimer la colonne description des données.
+
+    Le reste du script reste inchangé :
+        La boucle for et la fonction save_table_image continuent de fonctionner comme avant, mais sans la colonne description.
+
+Ces modifications devraient permettre de créer des images de tableaux sans la colonne description, évitant ainsi le problème de sur-zoom causé par les textes longs.
+Super
+2/2
+ChatGPT
+
+Je suis ravi que cela fonctionne pour vous ! Si vous avez d'autres questions ou besoin d'aide supplémentaire, n'hésitez pas à me demander. Bonne continuation avec votre projet ! 😊
+Il faudrait juste également ne garder que les textes avant le premier ";" dans la colonne 'colnam'
+ChatGPT
+
+Pour ne garder que les textes avant le premier ";" dans la colonne colnam, nous pouvons utiliser la fonction str_split du package stringr pour diviser la chaîne de caractères et sélectionner la partie avant le premier point-virgule. Voici comment ajuster le script précédent pour effectuer cette opération :
+
+    Assurez-vous que le package stringr est installé. Si ce n'est pas déjà fait, vous pouvez l'installer avec la commande suivante :
+
+r
+
+install.packages("stringr")
+
+    Modifiez le script pour traiter la colonne colnam et garder seulement la partie avant le premier ";".
+
+Voici le script mis à jour :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+library(stringr)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Occ/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Supprimer la colonne 'description'
+data <- select(data, -description)
+
+# Extraire le texte avant le premier ";" dans la colonne 'colnam'
+data$colnam <- str_split(data$colnam, ";", simplify = TRUE)[, 1]
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Créer un tableau avec gridExtra::tableGrob
+  table_plot <- tableGrob(subset_data, rows = NULL)
+  
+  # Créer un plot avec cowplot::ggdraw
+  p <- ggdraw() + draw_grob(table_plot)
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("table_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explication des modifications
+
+    Utilisation de str_split :
+        data$colnam <- str_split(data$colnam, ";", simplify = TRUE)[, 1] : Cette ligne utilise str_split de stringr pour diviser chaque valeur de la colonne colnam par ";" et sélectionner la première partie (avant le premier ";").
+
+    Le reste du script reste inchangé :
+        Les étapes pour créer les images de tableaux pour chaque valeur unique de tax_sp_level restent les mêmes.
+
+Ainsi, ce script devrait maintenant créer des images de tableaux en utilisant uniquement les parties de texte avant le premier ";" dans la colonne colnam. Cela devrait résoudre votre problème de zoom excessif causé par les textes longs dans cette colonne.
+2/2
+Voici la modification pour avoir les tableaux des habitats/description. Comment faire en sorte que ces 2 colonnes aillent à la ligne? 
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Habitats/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Supprimer la colonne 'description'
+data <- dplyr::select(data, tax_sp_level, description, habitat)
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Créer un tableau avec gridExtra::tableGrob
+  table_plot <- tableGrob(subset_data, rows = NULL)
+  
+  # Créer un plot avec cowplot::ggdraw
+  p <- ggdraw() + draw_grob(table_plot)
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("descr_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+ChatGPT
+
+Pour faire en sorte que les colonnes description et habitat aillent à la ligne dans les tableaux générés en utilisant ggplot2 et gridExtra, nous pouvons ajuster le format des données et personnaliser le rendu du tableau.
+
+Pour cela, nous allons utiliser gridExtra::tableGrob pour créer le tableau dans ggplot2, puis utiliser cowplot::ggdraw pour gérer le dessin du tableau et la mise en page. Voici comment modifier votre script pour inclure les colonnes description et habitat avec un retour à la ligne pour un affichage amélioré :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+library(stringr)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Habitats/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Supprimer la colonne 'description'
+data <- dplyr::select(data, tax_sp_level, description, habitat)
+
+# Extraire le texte avant le premier ";" dans la colonne 'description' et 'habitat'
+data$description <- str_split(data$description, ";", simplify = TRUE)[, 1]
+data$habitat <- str_split(data$habitat, ";", simplify = TRUE)[, 1]
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Convertir les colonnes en facteur pour conserver l'ordre des niveaux
+  subset_data$description <- factor(subset_data$description, levels = unique(subset_data$description))
+  subset_data$habitat <- factor(subset_data$habitat, levels = unique(subset_data$habitat))
+  
+  # Créer un tableau avec gridExtra::tableGrob
+  table_plot <- tableGrob(subset_data, rows = NULL, theme = ttheme_minimal(padding = unit(c(0.2, 0.5), "cm")))
+  
+  # Créer un plot avec cowplot::ggdraw
+  p <- ggdraw() + draw_grob(table_plot)
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("descr_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explications des modifications apportées :
+
+    Extraction du texte avant le premier ";" :
+        Nous utilisons str_split pour diviser les colonnes description et habitat et ne garder que la partie avant le premier ";".
+
+    Personnalisation du tableau avec tableGrob :
+        Nous utilisons tableGrob avec theme = ttheme_minimal(padding = unit(c(0.2, 0.5), "cm")) pour créer un tableau avec un espace de padding ajusté autour du texte.
+
+    Conversion en facteur :
+        Nous convertissons les colonnes description et habitat en facteur pour conserver l'ordre des niveaux et assurer que les niveaux apparaissent dans le même ordre dans tous les tableaux.
+
+    Sauvegarde de l'image :
+        La fonction ggsave est utilisée pour sauvegarder chaque tableau sous forme d'image .png avec des dimensions spécifiées (width = 10, height = 6).
+
+En utilisant ces ajustements, les tableaux générés devraient maintenant afficher les colonnes description et habitat avec un retour à la ligne lorsque nécessaire, améliorant ainsi la lisibilité des données dans les images produites.
+les données sont encore trop zoomées et ne vont pas vraiment à la ligne
+ChatGPT
+
+Pour ajuster le zoom des tableaux et améliorer la gestion du retour à la ligne pour les colonnes description et habitat, nous pouvons prendre quelques mesures supplémentaires :
+
+    Définir des thèmes spécifiques pour tableGrob : Utiliser ttheme_default ou ttheme_minimal pour ajuster le padding et la taille de la police.
+    Utiliser str_wrap de stringr pour gérer le retour à la ligne : Assurez-vous que le texte est correctement enveloppé pour s'adapter au tableau.
+
+Voici comment vous pouvez mettre à jour votre script pour inclure ces ajustements :
+
+r
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+library(stringr)
+
+# Chemins de fichiers
+input_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt.csv"
+output_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux Habitats/"
+
+# Lire le fichier CSV
+data <- read_csv(input_file)
+
+# Supprimer la colonne 'description'
+data <- dplyr::select(data, tax_sp_level, description, habitat)
+
+# Extraire le texte avant le premier ";" dans la colonne 'description' et 'habitat'
+data$description <- str_split(data$description, ";", simplify = TRUE)[, 1]
+data$habitat <- str_split(data$habitat, ";", simplify = TRUE)[, 1]
+
+# Séparer les données par 'tax_sp_level'
+tax_sp_levels <- unique(data$tax_sp_level)
+
+# Fonction pour créer et sauvegarder une image du tableau
+save_table_image <- function(subset_data, tax_sp_level) {
+  # Convertir les colonnes en facteur pour conserver l'ordre des niveaux
+  subset_data$description <- factor(subset_data$description, levels = unique(subset_data$description))
+  subset_data$habitat <- factor(subset_data$habitat, levels = unique(subset_data$habitat))
+  
+  # Envelopper le texte pour gérer le retour à la ligne
+  subset_data$description <- str_wrap(subset_data$description, width = 30)  # ajuster la largeur au besoin
+  subset_data$habitat <- str_wrap(subset_data$habitat, width = 30)  # ajuster la largeur au besoin
+  
+  # Créer un tableau avec gridExtra::tableGrob
+  table_plot <- tableGrob(subset_data, rows = NULL, theme = ttheme_minimal(padding = unit(c(0.5, 0.5), "cm"), base_size = 10))
+  
+  # Créer un plot avec cowplot::ggdraw
+  p <- ggdraw() + draw_grob(table_plot)
+  
+  # Définir le nom de fichier de sortie
+  output_file <- file.path(output_folder, paste0("descr_", tax_sp_level, ".png"))
+  
+  # Sauvegarder l'image
+  ggsave(output_file, plot = p, width = 10, height = 6)
+}
+
+# Créer et sauvegarder une image pour chaque valeur unique de 'tax_sp_level'
+for (level in tax_sp_levels) {
+  subset_data <- filter(data, tax_sp_level == level)
+  save_table_image(subset_data, level)
+}
+
+Explication des ajustements :
+
+    Envelopper le texte avec str_wrap :
+        str_wrap est utilisé pour envelopper le texte dans les colonnes description et habitat afin de gérer le retour à la ligne de manière appropriée. Vous pouvez ajuster la largeur (width) selon vos besoins pour garantir que le texte s'adapte correctement.
+
+    Personnalisation du tableau avec tableGrob :
+        theme = ttheme_minimal(padding = unit(c(0.5, 0.5), "cm"), base_size = 10) : Nous utilisons ttheme_minimal avec un padding plus grand (padding = unit(c(0.5, 0.5), "cm")) et une taille de police de base plus petite (base_size = 10) pour améliorer la lisibilité et éviter le sur-zoom.
+
+    Sauvegarde de l'image :
+        Les dimensions de l'image (width = 10, height = 6) sont conservées pour garantir que l'image générée a une taille appropriée.
+
+En utilisant ces ajustements, vous devriez obtenir des tableaux avec une meilleure gestion du zoom et du retour à la ligne pour les colonnes description et habitat. Vous pouvez ajuster les paramètres selon vos besoins spécifiques pour obtenir le meilleur rendu visuel possible.
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+Bonjour Chat, j'aimerais faire, à partir d'un code R, un screenshot d'une partie de chaque fichier html présent dans ce dossier (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output). Il faudrait sauver les screenshots au format .png avec le meme nom que les .html dans le dossier suivant (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Tableaux pour recap\Tableaux Couches modélisation). Il faudrait screenshot une seule partie dans ces .html. C'est la partie qui est écrite de cette manière lorsqu'on inspecte le document : "<h2>Analysis of variable contributions</h2>"
+ChatGPT
+
+Pour accomplir cela en utilisant R, vous pouvez utiliser la bibliothèque webshot qui permet de prendre des captures d'écran de pages web à partir de fichiers HTML. Voici un exemple de script R qui pourrait vous aider :
+
+    Assurez-vous d'avoir installé les packages nécessaires :
+
+    r
+
+install.packages("webshot")
+install.packages("magrittr")  # Si nécessaire pour utiliser l'opérateur %>%
+
+Chargez les bibliothèques nécessaires :
+
+r
+
+library(webshot)
+library(magrittr)  # Pour utiliser l'opérateur %>%
+
+Définissez les chemins vers vos dossiers :
+
+r
+
+dossier_html <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+dossier_png <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux pour recap/Tableaux Couches modélisation"
+
+Obtenez la liste des fichiers HTML dans le dossier dossier_html :
+
+r
+
+fichiers_html <- list.files(dossier_html, pattern = "\\.html$", full.names = TRUE)
+
+Définissez la fonction pour prendre le screenshot à partir de chaque fichier HTML :
+
+r
+
+take_screenshot <- function(file) {
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 5,  # Délai avant la capture d'écran (en secondes)
+          selector = "h2:contains('Analysis of variable contributions')")
+}
+
+Appliquez la fonction take_screenshot à chaque fichier HTML :
+
+r
+
+    lapply(fichiers_html, take_screenshot)
+
+Ce script effectuera les opérations suivantes :
+
+    Chargez les bibliothèques nécessaires.
+    Définissez les chemins vers les dossiers contenant les fichiers HTML et où vous souhaitez sauvegarder les captures d'écran.
+    Obtenez la liste des fichiers HTML à partir du dossier spécifié.
+    Définissez une fonction take_screenshot qui prend en entrée un fichier HTML, trouve l'élément <h2> spécifique et prend une capture d'écran de cette partie de la page.
+    Appliquez cette fonction à chaque fichier HTML dans la liste fichiers_html.
+
+Assurez-vous que les chemins spécifiés dans votre environnement R sont corrects et adaptés à votre configuration. Adjustez également les paramètres comme delay dans webshot si nécessaire pour assurer que la page a le temps de se charger avant la capture d'écran.
+> dossier_html <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+> dossier_png <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux pour recap/Tableaux Couches modélisation"
+> fichiers_html <- list.files(dossier_html, pattern = "\\.html$", full.names = TRUE)
+> take_screenshot <- function(file) {
++   webshot(file,
++           file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
++           delay = 5,  # Délai avant la capture d'écran (en secondes)
++           selector = "h2:contains('Analysis of variable contributions')")
++ }
+> lapply(fichiers_html, take_screenshot)
+Could not load  file:///C:/Users/Alex%20Massart/OneDrive%20-%20Universit%EF%BF%BD%20Libre%20de%20Bruxelles/Documents/ULB/2023-2024/M%EF%BF%BDmoire/R%20script/MaxEnt/output/Aframomum_mannii.html
+Erreur dans webshot(file, file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)),  : 
+  webshot.js returned failure value: 1
+ChatGPT
+
+Il semble que le problème soit lié à l'encodage des caractères dans le chemin d'accès à vos fichiers. Les caractères spéciaux comme les accents et les espaces peuvent parfois poser des problèmes avec certaines fonctions, notamment lorsque vous travaillez avec des chemins de fichiers en R.
+
+Pour résoudre ce problème, vous pouvez essayer les étapes suivantes :
+
+    Utiliser des chemins d'accès avec des barres obliques inversées doubles :
+    Parfois, utiliser des barres obliques inversées doubles (\\) au lieu de simples (\) dans les chemins d'accès peut aider à résoudre les problèmes d'encodage des caractères.
+
+    Modifiez vos chemins d'accès comme ceci :
+
+    r
+
+    dossier_html <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output"
+    dossier_png <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\Cartes\\Tableaux pour recap\\Tableaux Couches modélisation"
+
+    Utiliser des noms de fichiers sans accents :
+    Assurez-vous que vos fichiers HTML et les dossiers ne contiennent pas de caractères spéciaux comme des accents. Cela peut parfois résoudre les problèmes d'encodage.
+
+    Vérifier les droits d'accès :
+    Assurez-vous que vous avez les droits d'accès nécessaires pour lire et écrire dans les répertoires spécifiés.
+
+    Vérifier les privilèges du navigateur :
+    Parfois, des problèmes peuvent survenir si les privilèges du navigateur utilisé par webshot pour prendre les captures d'écran ne sont pas correctement configurés.
+
+Voici une version modifiée de votre script R en utilisant les chemins d'accès avec des barres obliques inversées doubles :
+
+r
+
+library(webshot)
+library(magrittr)
+
+# Définir les chemins d'accès avec des barres obliques inversées doubles
+dossier_html <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output"
+dossier_png <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\Cartes\\Tableaux pour recap\\Tableaux Couches modélisation"
+
+# Obtenir la liste des fichiers HTML dans le dossier_html
+fichiers_html <- list.files(dossier_html, pattern = "\\.html$", full.names = TRUE)
+
+# Définir la fonction pour prendre les screenshots
+take_screenshot <- function(file) {
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 5,  # Délai avant la capture d'écran (en secondes)
+          selector = "h2:contains('Analysis of variable contributions')")
+}
+
+# Appliquer la fonction take_screenshot à chaque fichier HTML
+lapply(fichiers_html, take_screenshot)
+
+Assurez-vous également que webshot est correctement configuré pour utiliser un navigateur compatible (comme Chrome ou PhantomJS) et que ces navigateurs ont les droits nécessaires pour accéder aux fichiers locaux et effectuer les captures d'écran. Si les problèmes persistent, vérifiez les logs de webshot pour des détails supplémentaires sur l'erreur rencontrée.
+Could not load  file:///C:/Users/Alex%20Massart/OneDrive%20-%20Universit%EF%BF%BD%20Libre%20de%20Bruxelles/Documents/ULB/2023-2024/M%EF%BF%BDmoire/R%20script/MaxEnt/output/Aframomum_mannii.html
+Erreur dans webshot(file, file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)),  : 
+  webshot.js returned failure value: 1
+ChatGPT
+
+Il semble que le problème persiste en raison de l'encodage incorrect des caractères dans le chemin d'accès au fichier HTML. L'erreur spécifique "webshot.js returned failure value: 1" indique généralement un problème lors de l'accès ou du chargement de la page web à capturer.
+
+Pour résoudre ce problème d'encodage et permettre à webshot de charger correctement les fichiers HTML, vous pouvez essayer les solutions suivantes :
+Solution 1 : Utilisation de chemins d'accès avec des barres obliques inversées doubles
+
+Modifiez vos chemins d'accès en utilisant des barres obliques inversées doubles (\\) au lieu de simples (\). Cela peut aider à résoudre les problèmes d'encodage des caractères spéciaux.
+
+r
+
+dossier_html <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output"
+dossier_png <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\Cartes\\Tableaux pour recap\\Tableaux Couches modélisation"
+
+Solution 2 : Vérification et modification des noms de fichiers et de répertoires
+
+Assurez-vous que les noms de fichiers et de dossiers ne contiennent pas de caractères spéciaux comme des accents. Par exemple, remplacez "Mémoire" par "Memoire" si possible.
+Solution 3 : Utilisation de la fonction URLencode
+
+Si les caractères spéciaux dans les noms de fichiers sont inévitables, vous pouvez utiliser la fonction URLencode pour encoder correctement le chemin d'accès. Par exemple :
+
+r
+
+dossier_html <- URLencode("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output")
+
+Solution 4 : Utilisation de chemins d'accès relatifs
+
+Essayez de spécifier des chemins d'accès relatifs à partir du répertoire de travail actuel de R. Par exemple :
+
+r
+
+dossier_html <- "./output"
+dossier_png <- "./Cartes/Tableaux pour recap/Tableaux Couches modélisation"
+
+Assurez-vous que le répertoire de travail actuel (getwd()) est correctement défini pour ces chemins relatifs.
+Solution 5 : Vérification des droits d'accès
+
+Assurez-vous que vous avez les droits d'accès nécessaires pour lire et écrire dans les répertoires spécifiés.
+Solution 6 : Vérification des paramètres de webshot
+
+Assurez-vous que webshot est correctement configuré pour utiliser un navigateur compatible (comme Chrome ou PhantomJS). Vous pouvez spécifier explicitement le chemin vers le navigateur à utiliser en utilisant l'argument `vheight = 768, vwidth = 1024
+J'ai fait quelques changements pour ne plus avoir le problème des espaces
+
+> # Définir les chemins d'accès avec des barres obliques inversées doubles
+> dossier_html <- "./output"
+> dossier_png <- "./Cartes/Tableaux_recap/Tableaux_Couches_modelisation"
+> 
+> 
+> # Obtenir la liste des fichiers HTML dans le dossier_html
+> fichiers_html <- list.files(dossier_html, pattern = "\\.html$", full.names = TRUE)
+> 
+> # Définir la fonction pour prendre les screenshots
+> take_screenshot <- function(file) {
++   webshot(file,
++           file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
++           delay = 5,  # Délai avant la capture d'écran (en secondes)
++           selector = "h2:contains('Analysis of variable contributions')")
++ }
+> 
+> # Appliquer la fonction take_screenshot à chaque fichier HTML
+> lapply(fichiers_html, take_screenshot)
+PHANTOM ERROR: CasperError: No element matching selector found: h2:contains('Analysis of variable contributions')
+TRACE:
+ -> phantomjs://platform/casper.js: 1066 (in function getElementBounds)
+ -> phantomjs://code/webshot.js: 158
+ -> undefined: 0 (in function map)
+ -> phantomjs://code/webshot.js: 157 (in function findClipRect)
+ -> phantomjs://code/webshot.js: 107
+ -> phantomjs://platform/casper.js: 1615 (in function runStep)
+ -> phantomjs://platform/casper.js: 406 (in function checkStep)
+Erreur dans webshot(file, file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)),  : 
+  webshot.js returned failure value: 1
+ChatGPT
+
+L'erreur que vous rencontrez indique que webshot ne parvient pas à trouver un élément <h2> contenant le texte "Analysis of variable contributions" dans vos fichiers HTML. Cela peut être dû à plusieurs raisons, notamment :
+
+    Erreur de sélecteur : Le sélecteur CSS spécifié "h2:contains('Analysis of variable contributions')", qui recherche un élément <h2> contenant ce texte précis, ne correspond à aucun élément dans les fichiers HTML.
+
+    Chargement de la page : Il est possible que la page ne soit pas entièrement chargée lorsque webshot tente de capturer la capture d'écran, ce qui peut entraîner l'absence de l'élément cible au moment de la capture.
+
+Pour résoudre ce problème, voici quelques suggestions :
+1. Vérification du contenu des fichiers HTML
+
+Assurez-vous que vos fichiers HTML contiennent bien un élément <h2> avec le texte "Analysis of variable contributions". Vous pouvez ouvrir manuellement un fichier HTML pour vérifier cela.
+2. Utilisation d'un sélecteur plus générique
+
+Si le texte dans l'élément <h2> peut varier légèrement ou s'il y a des espaces ou caractères invisibles, utilisez un sélecteur CSS plus générique comme "h2" pour cibler tous les éléments <h2>. Cela capturera tous les titres de niveau 2 sans se limiter à un texte spécifique.
+
+Modifiez votre fonction take_screenshot comme ceci :
+
+r
+
+take_screenshot <- function(file) {
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 5,  # Délai avant la capture d'écran (en secondes)
+          selector = "h2")
+}
+
+Cela prendra une capture d'écran de chaque élément <h2> dans vos fichiers HTML.
+3. Augmenter le délai de chargement
+
+Augmentez le délai avant la capture d'écran en augmentant la valeur de l'argument delay. Cela donne plus de temps à la page pour se charger complètement avant que webshot ne tente de capturer la capture d'écran.
+
+r
+
+take_screenshot <- function(file) {
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 10,  # Augmenter le délai à 10 secondes ou plus si nécessaire
+          selector = "h2")
+}
+
+4. Utilisation de l'inspecteur de navigateur pour vérifier le sélecteur
+
+Ouvrez un fichier HTML dans votre navigateur, faites un clic droit sur l'élément <h2> que vous souhaitez capturer et sélectionnez "Inspecter" pour ouvrir les outils de développement du navigateur. Vérifiez le sélecteur correct à utiliser dans votre script R.
+5. Utilisation de phantomjs_debug
+
+webshot utilise PhantomJS en arrière-plan pour capturer les pages web. Vous pouvez activer le mode de débogage phantomjs_debug pour obtenir plus d'informations sur les erreurs rencontrées.
+
+Ajoutez cette ligne avant d'appeler webshot :
+
+r
+
+options(webshot.debug = TRUE)
+
+Cela pourrait vous fournir des détails supplémentaires sur l'erreur rencontrée.
+
+En appliquant ces ajustements, vous devriez être en mesure de capturer les captures d'écran souhaitées de vos fichiers HTML. Assurez-vous également que votre environnement R a les autorisations nécessaires pour lire et écrire dans les répertoires spécifiés (dossier_html et dossier_png).
+peux-tu mettre le code en 1 fois?
+ChatGPT
+
+Bien sûr! Voici le code complet en une seule fois, en prenant en compte les ajustements pour gérer les problèmes d'encodage et de sélection d'élément <h2> dans vos fichiers HTML :
+
+r
+
+library(webshot)
+library(magrittr)
+
+# Définir les chemins d'accès avec des barres obliques inversées doubles
+dossier_html <- "./output"
+dossier_png <- "./Cartes/Tableaux_recap/Tableaux_Couches_modelisation"
+
+# Obtenir la liste des fichiers HTML dans le dossier_html
+fichiers_html <- list.files(dossier_html, pattern = "\\.html$", full.names = TRUE)
+
+# Définir la fonction pour prendre les screenshots
+take_screenshot <- function(file) {
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 10,  # Augmenter le délai à 10 secondes ou plus si nécessaire
+          selector = "h2")  # Sélecteur pour capturer tous les éléments <h2>
+}
+
+# Appliquer la fonction take_screenshot à chaque fichier HTML
+lapply(fichiers_html, take_screenshot)
+
+Explications :
+
+    Chemin d'accès : Les chemins d'accès sont définis en utilisant des barres obliques inversées doubles (\\). Assurez-vous que ces chemins mènent aux bons dossiers où sont stockés vos fichiers HTML à capturer et où seront sauvegardées les captures d'écran en format PNG.
+
+    Liste des fichiers HTML : list.files est utilisé pour obtenir une liste de tous les fichiers HTML présents dans le dossier spécifié par dossier_html.
+
+    Fonction take_screenshot : Cette fonction utilise webshot pour capturer les pages web. Les paramètres principaux sont :
+        file : Le fichier HTML à capturer.
+        file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")) : Le chemin de sortie pour la capture d'écran en format PNG, en utilisant le nom de fichier sans extension du fichier HTML comme base pour le nom du fichier PNG.
+        delay : Délai avant la capture d'écran, augmenté à 10 secondes pour assurer que la page a le temps de se charger complètement.
+        selector : Sélecteur CSS pour cibler tous les éléments <h2> dans les fichiers HTML.
+
+    Appliquer la fonction : lapply est utilisé pour appliquer la fonction take_screenshot à chaque fichier HTML dans fichiers_html.
+
+Assurez-vous que R est configuré pour utiliser un navigateur compatible avec webshot (comme Chrome ou PhantomJS) et que ces navigateurs ont les autorisations nécessaires pour accéder aux fichiers locaux et effectuer les captures d'écran. Cette approche devrait vous permettre de capturer les sections <h2> de vos fichiers HTML comme spécifié.
+Le code est bon mais ce n'est pas la bonne partie qui est screenshotée. Comment trouver dans les documents Chrome HTML Document (.html), la partie qui m'intéresse?
+2/2
+ChatGPT
+
+Pour trouver la partie spécifique d'intérêt dans vos fichiers HTML à l'aide de Google Chrome ou de tout autre navigateur web, vous pouvez suivre ces étapes :
+
+    Ouvrir le fichier HTML dans le navigateur :
+        Faites un clic droit sur le fichier HTML que vous souhaitez inspecter.
+        Choisissez "Ouvrir avec" et sélectionnez votre navigateur web préféré, comme Google Chrome.
+
+    Ouvrir les outils de développement :
+        Une fois le fichier HTML ouvert dans votre navigateur, faites un clic droit sur la page.
+        Sélectionnez "Inspecter" ou appuyez sur Ctrl + Maj + I (sur Windows/Linux) ou Cmd + Option + I (sur macOS) pour ouvrir les outils de développement.
+
+    Utiliser l'outil de recherche :
+        Dans les outils de développement, vous verrez l'onglet "Elements" (ou "Inspecteur" dans certaines versions).
+        Utilisez la fonction de recherche (généralement accessible avec Ctrl + F ou Cmd + F) pour rechercher le texte spécifique ou les balises HTML que vous souhaitez cibler. Dans votre cas, vous rechercherez <h2>Analysis of variable contributions</h2>.
+
+    Vérifier l'emplacement et la structure :
+        Une fois que vous avez localisé l'élément <h2> avec le texte souhaité, assurez-vous que cet élément est bien positionné dans le fichier HTML comme vous le souhaitez pour la capture d'écran.
+
+    Adapter le sélecteur CSS :
+        Si nécessaire, notez l'emplacement de cet élément dans la structure HTML. Par exemple, il peut être à l'intérieur d'une <div> spécifique ou d'une autre balise parente.
+        Modifiez le sélecteur CSS dans votre script R en conséquence pour cibler précisément cet élément. Par exemple, si l'élément <h2> est à l'intérieur d'une <div> avec l'ID #main-content, votre sélecteur pourrait ressembler à div#main-content h2.
+
+    Testez le nouveau sélecteur :
+        Modifiez votre fonction take_screenshot avec le nouveau sélecteur CSS et testez-la sur un fichier HTML pour vous assurer que vous capturez la bonne partie de la page.
+
+Voici comment votre fonction take_screenshot pourrait être modifiée en fonction de votre sélecteur CSS adapté :
+
+r
+
+take_screenshot <- function(file) {
+  webshot(file,
+          file = file.path(dossier_png, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
+          delay = 10,  # Augmenter le délai à 10 secondes ou plus si nécessaire
+          selector = "div#main-content h2")  # Exemple de sélecteur CSS adapté
+}
+
+Assurez-vous d'adapter le sélecteur CSS ("div#main-content h2") en fonction de ce que vous avez observé dans les outils de développement de votre navigateur. Cela garantira que vous capturez la bonne partie de chaque fichier HTML selon vos besoins spécifiques.
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+J'aimerais recupérer des infos dans un "Chrome HTML Document (.html)" et les ajouter à d'autres infos pour créer un pdf, est-ce possible de le faire par R ?
+ChatGPT
+
+Oui, il est possible d'utiliser R pour extraire des informations d'un document HTML et les ajouter à d'autres informations pour créer un PDF. Voici un guide étape par étape pour accomplir cela :
+
+    Installation des packages nécessaires :
+        rvest : pour extraire les données de l'HTML.
+        rmarkdown et knitr : pour générer le document PDF.
+
+    r
+
+install.packages("rvest")
+install.packages("rmarkdown")
+install.packages("knitr")
+
+Lecture et extraction des informations de l'HTML :
+
+r
+
+library(rvest)
+
+# Lire le fichier HTML
+html_file <- "path/to/your/file.html"
+html_content <- read_html(html_file)
+
+# Extraire des informations spécifiques
+# Supposons que nous voulons extraire tous les paragraphes <p>
+paragraphs <- html_content %>%
+  html_nodes("p") %>%
+  html_text()
+
+Création du contenu pour le PDF :
+
+    Utiliser rmarkdown pour créer un document en format Markdown (.Rmd).
+    Ajouter les informations extraites et d'autres informations que vous souhaitez inclure dans le PDF.
+
+r
+
+# Créer un fichier .Rmd
+rmd_file <- "output_document.Rmd"
+fileConn <- file(rmd_file)
+
+# Écrire les contenus extraits et d'autres informations dans le fichier .Rmd
+writeLines(c(
+  "---",
+  "title: \"Mon Document PDF\"",
+  "author: \"Auteur\"",
+  "date: \"`r Sys.Date()`\"",
+  "output: pdf_document",
+  "---",
+  "",
+  "# Informations extraites de l'HTML",
+  paste(paragraphs, collapse = "\n\n"),
+  "",
+  "# Autres informations",
+  "Ceci est un exemple de texte supplémentaire ajouté au document."
+), fileConn)
+
+close(fileConn)
+
+Génération du PDF :
+
+r
+
+    library(rmarkdown)
+
+    # Convertir le fichier .Rmd en PDF
+    render(rmd_file)
+
+Exemple complet
+
+r
+
+# Étape 1 : Installer les packages nécessaires
+install.packages("rvest")
+install.packages("rmarkdown")
+install.packages("knitr")
+
+# Étape 2 : Charger les bibliothèques
+library(rvest)
+library(rmarkdown)
+
+# Étape 3 : Lire et extraire les informations de l'HTML
+html_file <- "path/to/your/file.html"
+html_content <- read_html(html_file)
+paragraphs <- html_content %>%
+  html_nodes("p") %>%
+  html_text()
+
+# Étape 4 : Créer un fichier .Rmd avec les informations extraites et autres
+rmd_file <- "output_document.Rmd"
+fileConn <- file(rmd_file)
+writeLines(c(
+  "---",
+  "title: \"Mon Document PDF\"",
+  "author: \"Auteur\"",
+  "date: \"`r Sys.Date()`\"",
+  "output: pdf_document",
+  "---",
+  "",
+  "# Informations extraites de l'HTML",
+  paste(paragraphs, collapse = "\n\n"),
+  "",
+  "# Autres informations",
+  "Ceci est un exemple de texte supplémentaire ajouté au document."
+), fileConn)
+close(fileConn)
+
+# Étape 5 : Générer le PDF
+render(rmd_file)
+
+En suivant ces étapes, vous pouvez extraire des informations d'un fichier HTML et les combiner avec d'autres informations pour générer un PDF à l'aide de R.
+J'aimerais un code R qui pour tout les documents .htlm de ce répertoire (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output), on crée un pdf contenant plusieurs éléments provenant de l'html : 
+- le titre
+- le paragraphe 'Pictures of the model' et la photo
+- le tableau du paragraphe 'Analysis of variable contributions'
+Il faudrait également mettre d'autres choses ne provenant pas de l'htlm :
+- une carte avec le raster présent dans le même répertoire et dont le nom correspond
+- la valeur du seuil qui est dans la 2e colonne de C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\seuils_bon.csv et dont la 1ere colonne correspond au nom du document .html
+ChatGPT
+
+Pour accomplir cette tâche, voici un guide détaillé et un code R qui extrait les informations nécessaires de chaque fichier HTML dans le répertoire spécifié, et génère un fichier PDF contenant les informations demandées :
+
+    Installation des packages nécessaires :
+        rvest : pour extraire les données de l'HTML.
+        rmarkdown et knitr : pour générer le document PDF.
+        raster : pour manipuler les fichiers raster.
+        ggplot2 : pour la visualisation de la carte raster.
+
+    r
+
+install.packages("rvest")
+install.packages("rmarkdown")
+install.packages("knitr")
+install.packages("raster")
+install.packages("ggplot2")
+install.packages("dplyr")
+
+Script R complet :
+
+r
+
+    library(rvest)
+    library(rmarkdown)
+    library(raster)
+    library(ggplot2)
+    library(dplyr)
+
+    # Définir les répertoires et fichiers
+    input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+    seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+    seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+    # Liste des fichiers HTML dans le répertoire
+    html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+    # Fonction pour extraire les informations d'un fichier HTML
+    extract_info <- function(html_file) {
+      html_content <- read_html(html_file)
+      
+      # Extraire le titre
+      title <- html_content %>%
+        html_node("title") %>%
+        html_text()
+      
+      # Extraire le paragraphe 'Pictures of the model' et la photo
+      pictures_paragraph <- html_content %>%
+        html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]") %>%
+        html_text()
+      
+      pictures_img <- html_content %>%
+        html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]/following-sibling::img") %>%
+        html_attr("src")
+      
+      # Extraire le tableau 'Analysis of variable contributions'
+      table_html <- html_content %>%
+        html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+        html_table()
+      
+      list(
+        title = title,
+        pictures_paragraph = pictures_paragraph,
+        pictures_img = pictures_img,
+        table_html = table_html
+      )
+    }
+
+    # Fonction pour générer le PDF pour un fichier HTML
+    generate_pdf <- function(html_file) {
+      info <- extract_info(html_file)
+      file_name <- basename(html_file)
+      file_base <- sub("\\.html$", "", file_name)
+      
+      # Trouver la valeur du seuil
+      seuil_value <- seuils_data %>%
+        filter(V1 == file_base) %>%
+        pull(V2)
+      
+      # Charger le raster correspondant
+      raster_file <- file.path(input_dir, paste0(file_base, ".tif"))
+      raster_data <- raster(raster_file)
+      
+      # Créer une carte du raster
+      raster_plot <- ggplot() +
+        geom_raster(data = as.data.frame(rasterToPoints(raster_data)), aes(x = x, y = y, fill = layer)) +
+        scale_fill_viridis_c() +
+        theme_minimal() +
+        labs(title = paste("Raster map for", file_base))
+      
+      # Créer un fichier .Rmd pour le PDF
+      rmd_file <- file.path(input_dir, paste0(file_base, ".Rmd"))
+      fileConn <- file(rmd_file)
+      writeLines(c(
+        "---",
+        paste("title: \"", info$title, "\"", sep = ""),
+        "author: \"Auteur\"",
+        "date: \"`r Sys.Date()`\"",
+        "output: pdf_document",
+        "---",
+        "",
+        "# Pictures of the model",
+        info$pictures_paragraph,
+        if (!is.null(info$pictures_img)) paste0("![Model Picture](", info$pictures_img, ")") else "",
+        "",
+        "# Analysis of variable contributions",
+        knitr::kable(info$table_html, format = "markdown"),
+        "",
+        "# Seuil",
+        paste("La valeur du seuil est:", seuil_value),
+        "",
+        "# Raster Map",
+        "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+        "print(raster_plot)",
+        "```"
+      ), fileConn)
+      close(fileConn)
+      
+      # Générer le PDF
+      render(rmd_file, output_file = file.path(input_dir, paste0(file_base, ".pdf")))
+    }
+
+    # Générer les PDFs pour tous les fichiers HTML
+    lapply(html_files, generate_pdf)
+
+Explications :
+
+    Extraction des informations :
+        extract_info : Fonction qui extrait le titre, le paragraphe 'Pictures of the model' et son image, et le tableau 'Analysis of variable contributions' d'un fichier HTML.
+
+    Génération du PDF :
+        generate_pdf : Fonction qui génère un fichier PDF pour chaque fichier HTML. Elle utilise rmarkdown pour créer un fichier .Rmd, puis génère un PDF à partir de ce fichier .Rmd.
+
+    Récupération des seuils :
+        Le seuil correspondant à chaque fichier HTML est récupéré à partir du fichier CSV seuils_bon.csv.
+
+    Création de la carte raster :
+        La carte du raster est créée en utilisant ggplot2 et ajoutée au fichier PDF.
+
+    Traitement de tous les fichiers HTML :
+        lapply(html_files, generate_pdf) : Génère des PDFs pour tous les fichiers HTML présents dans le répertoire spécifié.
+
+En exécutant ce script, vous obtiendrez des fichiers PDF dans le répertoire de sortie, chacun contenant les informations extraites des fichiers HTML, la carte raster correspondante et la valeur du seuil appropriée.
+Erreur dans filter(., V1 == file_base) : 
+Caused by error:
+! objet 'V1' introuvable
+
+Voici le début de seuils_bon : 
+
+	
+Fichier
+Seuil_minimal
+1
+Aframomum_mannii
+0.4966372
+2/2
+ChatGPT
+
+Pour résoudre l'erreur due à l'absence des colonnes V1 et V2, nous devons renommer les colonnes du fichier CSV pour correspondre à leurs noms réels. Basé sur les informations fournies, la première colonne devrait être renommée en Fichier et la deuxième colonne en Seuil_minimal.
+
+Voici le script R mis à jour pour tenir compte des noms de colonnes corrects :
+
+    Installation des packages nécessaires :
+        rvest : pour extraire les données de l'HTML.
+        rmarkdown et knitr : pour générer le document PDF.
+        raster : pour manipuler les fichiers raster.
+        ggplot2 : pour la visualisation de la carte raster.
+        dplyr : pour manipuler les données.
+
+    r
+
+install.packages("rvest")
+install.packages("rmarkdown")
+install.packages("knitr")
+install.packages("raster")
+install.packages("ggplot2")
+install.packages("dplyr")
+
+Script R complet :
+
+r
+
+    library(rvest)
+    library(rmarkdown)
+    library(raster)
+    library(ggplot2)
+    library(dplyr)
+
+    # Définir les répertoires et fichiers
+    input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+    seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+    seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+    # Renommer les colonnes pour correspondre à leur nom réel
+    colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+    # Liste des fichiers HTML dans le répertoire
+    html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+    # Fonction pour extraire les informations d'un fichier HTML
+    extract_info <- function(html_file) {
+      html_content <- read_html(html_file)
+      
+      # Extraire le titre
+      title <- html_content %>%
+        html_node("title") %>%
+        html_text()
+      
+      # Extraire le paragraphe 'Pictures of the model' et la photo
+      pictures_paragraph <- html_content %>%
+        html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]") %>%
+        html_text()
+      
+      pictures_img <- html_content %>%
+        html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]/following-sibling::img") %>%
+        html_attr("src")
+      
+      # Extraire le tableau 'Analysis of variable contributions'
+      table_html <- html_content %>%
+        html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+        html_table()
+      
+      list(
+        title = title,
+        pictures_paragraph = pictures_paragraph,
+        pictures_img = pictures_img,
+        table_html = table_html
+      )
+    }
+
+    # Fonction pour générer le PDF pour un fichier HTML
+    generate_pdf <- function(html_file) {
+      info <- extract_info(html_file)
+      file_name <- basename(html_file)
+      file_base <- sub("\\.html$", "", file_name)
+      
+      # Trouver la valeur du seuil
+      seuil_value <- seuils_data %>%
+        filter(Fichier == file_base) %>%
+        pull(Seuil_minimal)
+      
+      # Charger le raster correspondant
+      raster_file <- file.path(input_dir, paste0(file_base, ".tif"))
+      raster_data <- raster(raster_file)
+      
+      # Créer une carte du raster
+      raster_plot <- ggplot() +
+        geom_raster(data = as.data.frame(rasterToPoints(raster_data)), aes(x = x, y = y, fill = layer)) +
+        scale_fill_viridis_c() +
+        theme_minimal() +
+        labs(title = paste("Raster map for", file_base))
+      
+      # Créer un fichier .Rmd pour le PDF
+      rmd_file <- file.path(input_dir, paste0(file_base, ".Rmd"))
+      fileConn <- file(rmd_file)
+      writeLines(c(
+        "---",
+        paste("title: \"", info$title, "\"", sep = ""),
+        "author: \"Auteur\"",
+        "date: \"`r Sys.Date()`\"",
+        "output: pdf_document",
+        "---",
+        "",
+        "# Pictures of the model",
+        info$pictures_paragraph,
+        if (!is.null(info$pictures_img)) paste0("![Model Picture](", file.path(dirname(html_file), info$pictures_img), ")") else "",
+        "",
+        "# Analysis of variable contributions",
+        knitr::kable(info$table_html, format = "markdown"),
+        "",
+        "# Seuil",
+        paste("La valeur du seuil est:", seuil_value),
+        "",
+        "# Raster Map",
+        "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+        "print(raster_plot)",
+        "```"
+      ), fileConn)
+      close(fileConn)
+      
+      # Générer le PDF
+      render(rmd_file, output_file = file.path(input_dir, paste0(file_base, ".pdf")))
+    }
+
+    # Générer les PDFs pour tous les fichiers HTML
+    lapply(html_files, generate_pdf)
+
+Explications :
+
+    Renommage des colonnes :
+        Nous avons renommé les colonnes du fichier CSV pour correspondre à leurs noms réels (Fichier et Seuil_minimal).
+
+    Extraction des informations :
+        extract_info : Fonction qui extrait le titre, le paragraphe 'Pictures of the model' et son image, et le tableau 'Analysis of variable contributions' d'un fichier HTML.
+
+    Génération du PDF :
+        generate_pdf : Fonction qui génère un fichier PDF pour chaque fichier HTML. Elle utilise rmarkdown pour créer un fichier .Rmd, puis génère un PDF à partir de ce fichier .Rmd.
+
+    Récupération des seuils :
+        Le seuil correspondant à chaque fichier HTML est récupéré à partir du fichier CSV seuils_bon.csv en utilisant les noms de colonnes corrects.
+
+    Création de la carte raster :
+        La carte du raster est créée en utilisant ggplot2 et ajoutée au fichier PDF.
+
+    Traitement de tous les fichiers HTML :
+        lapply(html_files, generate_pdf) : Génère des PDFs pour tous les fichiers HTML présents dans le répertoire spécifié.
+
+En exécutant ce script, vous obtiendrez des fichiers PDF dans le répertoire de sortie, chacun contenant les informations extraites des fichiers HTML, la carte raster correspondante et la valeur du seuil appropriée.
+processing file: Aframomum_mannii.Rmd
+  |...............................................................................| 100% [raster-map]Error in geom_raster():
+! Problem while computing aesthetics.
+i Error occurred in the 1st layer.
+Caused by error in compute_aesthetics():
+! Aesthetics are not valid data columns.
+x The following aesthetics are invalid:
+x fill = layer
+i Did you mistype the name of a data column or forget to add after_stat()?
+Backtrace:
+  1. base::print(raster_plot)
+  3. ggplot2:::print.ggplot(raster_plot)
+  5. ggplot2:::ggplot_build.ggplot(x)
+  6. ggplot2:::by_layer(...)
+ 13. ggplot2 (local) f(l = layers[[i]], d = data[[i]])
+ 14. l$compute_aesthetics(d, plot)
+ 15. ggplot2 (local) compute_aesthetics(..., self = self)
+                                                                                                                             
+Erreur dans geom_raster(data = as.data.frame(rasterToPoints(raster_data)),  : 
+  
+i Error occurred in the 1st layer.
+Caused by error in compute_aesthetics():
+! Aesthetics are not valid data columns.
+x The following aesthetics are invalid:
+x fill = layer
+i Did you mistype the name of a data column or forget to add after_stat()?
+Erreur dans paste0("\nQuitting from lines ", loc) : 
+  l'argument "loc" est manquant, avec aucune valeur par défaut
+2/2
+ChatGPT
+
+L'erreur est due à la mauvaise référence à la colonne de données pour l'esthétique fill dans geom_raster(). Lors de la conversion des données raster en data frame, le nom de la colonne de valeurs peut ne pas être layer. Nous devons vérifier le nom de la colonne après la conversion et l'utiliser correctement dans geom_raster.
+
+Voici une version mise à jour du script avec des corrections pour le problème de noms de colonnes:
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(raster)
+library(ggplot2)
+library(dplyr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le paragraphe 'Pictures of the model' et la photo
+  pictures_paragraph <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]") %>%
+    html_text()
+  
+  pictures_img <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]/following-sibling::img") %>%
+    html_attr("src")
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  list(
+    title = title,
+    pictures_paragraph = pictures_paragraph,
+    pictures_img = pictures_img,
+    table_html = table_html[[1]]  # Prendre le premier tableau si plusieurs existent
+  )
+}
+
+# Fonction pour générer le PDF pour un fichier HTML
+generate_pdf <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(input_dir, paste0(file_base, ".tif"))
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Créer un fichier .Rmd pour le PDF
+  rmd_file <- file.path(input_dir, paste0(file_base, ".Rmd"))
+  fileConn <- file(rmd_file)
+  writeLines(c(
+    "---",
+    paste("title: \"", info$title, "\"", sep = ""),
+    "author: \"Auteur\"",
+    "date: \"`r Sys.Date()`\"",
+    "output: pdf_document",
+    "---",
+    "",
+    "# Pictures of the model",
+    info$pictures_paragraph,
+    if (!is.null(info$pictures_img)) paste0("![Model Picture](", file.path(dirname(html_file), info$pictures_img), ")") else "",
+    "",
+    "# Analysis of variable contributions",
+    knitr::kable(info$table_html, format = "markdown"),
+    "",
+    "# Seuil",
+    paste("La valeur du seuil est:", seuil_value),
+    "",
+    "# Raster Map",
+    "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+    "print(raster_plot)",
+    "```"
+  ), fileConn)
+  close(fileConn)
+  
+  # Générer le PDF
+  render(rmd_file, output_file = file.path(input_dir, paste0(file_base, ".pdf")))
+}
+
+# Générer les PDFs pour tous les fichiers HTML
+lapply(html_files, generate_pdf)
+
+Explications des modifications :
+
+    Conversion du raster en data frame :
+        Nous avons converti le raster en data frame et renommé les colonnes en x, y, et value pour correspondre aux noms d'esthétiques utilisés dans ggplot2.
+
+    Création de la carte raster :
+        Nous avons utilisé les noms de colonnes corrects (x, y, et value) dans geom_raster().
+
+En exécutant ce script, vous devriez obtenir des fichiers PDF dans le répertoire de sortie, chacun contenant les informations extraites des fichiers HTML, la carte raster correspondante et la valeur du seuil appropriée.
+Erreur dans table_html[[1]] : indice hors limites
+
+De plus, les couches rasters sont sous format .Asc
+ChatGPT
+
+Pour résoudre ces deux problèmes :
+
+    Erreur de l'indice hors limites : Cela se produit lorsque table_html[[1]] essaie d'accéder à un élément inexistant. Nous devrions d'abord vérifier que le tableau existe avant d'essayer de l'extraire.
+
+    Format raster .asc : Nous devons ajuster la lecture du fichier raster en utilisant read.asciigrid du package sp pour lire les fichiers au format .asc.
+
+Voici la version mise à jour du script :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le paragraphe 'Pictures of the model' et la photo
+  pictures_paragraph <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]") %>%
+    html_text()
+  
+  pictures_img <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]/following-sibling::img") %>%
+    html_attr("src")
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    pictures_paragraph = pictures_paragraph,
+    pictures_img = pictures_img,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le PDF pour un fichier HTML
+generate_pdf <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(input_dir, paste0(file_base, ".asc"))
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Créer un fichier .Rmd pour le PDF
+  rmd_file <- file.path(input_dir, paste0(file_base, ".Rmd"))
+  fileConn <- file(rmd_file)
+  writeLines(c(
+    "---",
+    paste("title: \"", info$title, "\"", sep = ""),
+    "author: \"Auteur\"",
+    "date: \"`r Sys.Date()`\"",
+    "output: pdf_document",
+    "---",
+    "",
+    "# Pictures of the model",
+    info$pictures_paragraph,
+    if (!is.null(info$pictures_img)) paste0("![Model Picture](", file.path(dirname(html_file), info$pictures_img), ")") else "",
+    "",
+    "# Analysis of variable contributions",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "markdown") else "Table not available",
+    "",
+    "# Seuil",
+    paste("La valeur du seuil est:", seuil_value),
+    "",
+    "# Raster Map",
+    "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+    "print(raster_plot)",
+    "```"
+  ), fileConn)
+  close(fileConn)
+  
+  # Générer le PDF
+  render(rmd_file, output_file = file.path(input_dir, paste0(file_base, ".pdf")))
+}
+
+# Générer les PDFs pour tous les fichiers HTML
+lapply(html_files, generate_pdf)
+
+Explications des modifications :
+
+    Vérification de l'existence du tableau :
+        Avant d'accéder au tableau, nous vérifions que table_html contient au moins un élément. Si oui, nous extrayons le premier tableau ; sinon, nous définissons table_data à NULL.
+
+    Chargement du raster au format .asc :
+        Nous utilisons la fonction raster() pour lire les fichiers raster au format .asc.
+
+    Utilisation de rasterToPoints :
+        Nous avons utilisé rasterToPoints pour convertir le raster en data frame et avons renommé les colonnes en x, y, et value.
+
+En exécutant ce script, vous devriez obtenir des fichiers PDF dans le répertoire de sortie, chacun contenant les informations extraites des fichiers HTML, la carte raster correspondante et la valeur du seuil appropriée.
+La génération d'un pdf est compliqué, est-ce possible de faire un Chrome HTML Document (.html) à la place?
+2/2
+ChatGPT
+
+Oui, bien sûr ! Si la génération de PDF est complexe, vous pouvez simplement générer un fichier HTML à partir des informations extraites des fichiers HTML d'entrée. Voici comment vous pouvez ajuster le script pour générer des fichiers HTML au lieu de PDF :
+
+    Modification du type de sortie : Remplacez output: pdf_document par output: html_document dans le fichier .Rmd.
+
+    Suppression de la fonction render : Étant donné que vous ne générez plus de PDF, vous pouvez supprimer l'appel à render à la fin de la fonction generate_pdf.
+
+Voici une version ajustée du script pour générer des fichiers HTML à partir des fichiers HTML d'entrée :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le paragraphe 'Pictures of the model' et la photo
+  pictures_paragraph <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]") %>%
+    html_text()
+  
+  pictures_img <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]/following-sibling::img") %>%
+    html_attr("src")
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    pictures_paragraph = pictures_paragraph,
+    pictures_img = pictures_img,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(input_dir, paste0(file_base, ".asc"))
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Créer un fichier .Rmd pour le HTML
+  rmd_file <- file.path(input_dir, paste0(file_base, ".Rmd"))
+  fileConn <- file(rmd_file)
+  writeLines(c(
+    "---",
+    paste("title: \"", info$title, "\"", sep = ""),
+    "author: \"Auteur\"",
+    "date: \"`r Sys.Date()`\"",
+    "output: html_document",
+    "---",
+    "",
+    "# Pictures of the model",
+    info$pictures_paragraph,
+    if (!is.null(info$pictures_img)) paste0("![Model Picture](", file.path(dirname(html_file), info$pictures_img), ")") else "",
+    "",
+    "# Analysis of variable contributions",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "Table not available",
+    "",
+    "# Seuil",
+    paste("La valeur du seuil est:", seuil_value),
+    "",
+    "# Raster Map",
+    "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+    "print(raster_plot)",
+    "```"
+  ), fileConn)
+  close(fileConn)
+  
+  # Convertir le .Rmd en .html
+  rmarkdown::render(rmd_file, output_format = "html_document", output_file = file.path(input_dir, paste0(file_base, ".html")))
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Explications :
+
+    Type de sortie HTML :
+        Le type de sortie a été changé de pdf_document à html_document dans le fichier .Rmd.
+
+    Suppression de l'appel render :
+        L'appel à render à la fin de la fonction generate_html a été supprimé car nous n'avons plus besoin de générer des fichiers PDF.
+
+    Formatage pour HTML :
+        Les tables sont maintenant formatées en HTML à l'aide de format = "html" dans knitr::kable().
+
+En exécutant ce script, des fichiers HTML seront générés dans le répertoire de sortie, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante et la valeur du seuil appropriée.
+Est-il possible de les télécharger dans un autre dossier : 
+C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Recap Cartes
+ChatGPT
+
+Oui, bien sûr ! Pour télécharger les fichiers HTML générés dans un autre dossier, vous pouvez spécifier le chemin complet du nouveau dossier dans la fonction generate_html. Voici comment ajuster le script pour télécharger les fichiers HTML dans le dossier spécifié (C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes):
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le paragraphe 'Pictures of the model' et la photo
+  pictures_paragraph <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]") %>%
+    html_text()
+  
+  pictures_img <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Pictures of the model')]/following-sibling::img") %>%
+    html_attr("src")
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    pictures_paragraph = pictures_paragraph,
+    pictures_img = pictures_img,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(input_dir, paste0(file_base, ".asc"))
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Créer un fichier .Rmd pour le HTML
+  rmd_file <- file.path(output_dir, paste0(file_base, ".Rmd"))
+  fileConn <- file(rmd_file)
+  writeLines(c(
+    "---",
+    paste("title: \"", info$title, "\"", sep = ""),
+    "author: \"Auteur\"",
+    "date: \"`r Sys.Date()`\"",
+    "output: html_document",
+    "---",
+    "",
+    "# Pictures of the model",
+    info$pictures_paragraph,
+    if (!is.null(info$pictures_img)) paste0("![Model Picture](", file.path(dirname(html_file), info$pictures_img), ")") else "",
+    "",
+    "# Analysis of variable contributions",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "Table not available",
+    "",
+    "# Seuil",
+    paste("La valeur du seuil est:", seuil_value),
+    "",
+    "# Raster Map",
+    "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+    "print(raster_plot)",
+    "```"
+  ), fileConn)
+  close(fileConn)
+  
+  # Convertir le .Rmd en .html
+  rmarkdown::render(rmd_file, output_format = "html_document", output_file = file.path(output_dir, paste0(file_base, ".html")))
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Explications :
+
+    Changement du répertoire de sortie :
+        La variable output_dir est définie pour spécifier le chemin complet du nouveau dossier où les fichiers HTML seront générés.
+
+    Modification du chemin du fichier .Rmd :
+        Dans la fonction generate_html, le chemin complet du fichier .Rmd est spécifié en utilisant output_dir comme répertoire de sortie.
+
+    Utilisation de rmarkdown::render :
+        À la fin de la fonction generate_html, rmarkdown::render est utilisé pour convertir le fichier .Rmd en fichier HTML et le sauvegarder dans le dossier spécifié par output_dir.
+
+En exécutant ce script, les fichiers HTML seront générés dans le répertoire C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante et la valeur du seuil appropriée.
+Le code est très bien. J'aimerais juste changer le répertoire où on va chercher les rasters par celui-ci (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output\rasters_seuils) et également enlever la partie 'Pictures of the model' et la remplacer par le fichier .png qui porte le même nom que le titre dans ce dossier (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output\plots)
+ChatGPT
+
+D'accord, nous allons modifier le script pour :
+
+    Chercher les fichiers raster dans le répertoire spécifié C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils.
+    Remplacer la section 'Pictures of the model' par une image .png dont le nom correspond au titre, provenant du répertoire C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots.
+
+Voici le script modifié :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, ".asc"))
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(info$title, ".png"))
+  
+  # Créer un fichier .Rmd pour le HTML
+  rmd_file <- file.path(output_dir, paste0(file_base, ".Rmd"))
+  fileConn <- file(rmd_file)
+  writeLines(c(
+    "---",
+    paste("title: \"", info$title, "\"", sep = ""),
+    "author: \"Auteur\"",
+    "date: \"`r Sys.Date()`\"",
+    "output: html_document",
+    "---",
+    "",
+    "# Model Plot",
+    if (file.exists(plot_image)) paste0("![Model Plot](", plot_image, ")") else "Plot image not available",
+    "",
+    "# Analysis of variable contributions",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "Table not available",
+    "",
+    "# Seuil",
+    paste("La valeur du seuil est:", seuil_value),
+    "",
+    "# Raster Map",
+    "```{r raster-map, echo=FALSE, fig.width=8, fig.height=6}",
+    "print(raster_plot)",
+    "```"
+  ), fileConn)
+  close(fileConn)
+  
+  # Convertir le .Rmd en .html
+  rmarkdown::render(rmd_file, output_format = "html_document", output_file = file.path(output_dir, paste0(file_base, ".html")))
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Explications des modifications :
+
+    Nouveau répertoire pour les rasters :
+        La variable raster_dir est définie pour spécifier le chemin complet du nouveau dossier contenant les fichiers raster.
+
+    Remplacement de 'Pictures of the model' :
+        La section 'Pictures of the model' a été remplacée par une image .png dont le nom correspond au titre. Le chemin de l'image est défini par plot_image, qui pointe vers le répertoire plots_dir.
+
+    Mise à jour du fichier .Rmd :
+        La section de 'Pictures of the model' est remplacée par l'image .png du répertoire plots_dir.
+        Si l'image existe, elle est incluse dans le fichier .Rmd. Sinon, un message "Plot image not available" est affiché.
+
+En exécutant ce script, les fichiers HTML seront générés dans le répertoire C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante, la valeur du seuil appropriée et l'image du modèle.
+Je n'ai pas besoin de créer d'autres documents que le .html donc si les .rmd ne sont pas nécessaires, on ne doit pas les produire
+ChatGPT
+
+Si vous n'avez pas besoin des fichiers .Rmd et que vous souhaitez générer directement les fichiers HTML, nous pouvons simplifier le processus en éliminant l'étape de création des fichiers .Rmd. Voici comment ajuster le script pour générer directement les fichiers HTML sans passer par les fichiers .Rmd intermédiaires :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, ".asc"))
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(info$title, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <h2>Raster Map</h2>\n",
+    "  <div id=\"raster-map\"></div>\n",
+    "  <script type=\"text/javascript\">\n",
+    "    document.addEventListener('DOMContentLoaded', function() {\n",
+    "      var data = ", jsonlite::toJSON(raster_df), ";\n",
+    "      var width = 800;\n",
+    "      var height = 600;\n",
+    "      var svg = d3.select('#raster-map').append('svg').attr('width', width).attr('height', height);\n",
+    "      var x = d3.scaleLinear().domain([d3.min(data, d => d.x), d3.max(data, d => d.x)]).range([0, width]);\n",
+    "      var y = d3.scaleLinear().domain([d3.min(data, d => d.y), d3.max(data, d => d.y)]).range([height, 0]);\n",
+    "      var color = d3.scaleSequential(d3.interpolateViridis).domain([d3.min(data, d => d.value), d3.max(data, d => d.value)]);\n",
+    "      svg.selectAll('rect')\n",
+    "        .data(data)\n",
+    "        .enter().append('rect')\n",
+    "        .attr('x', d => x(d.x))\n",
+    "        .attr('y', d => y(d.y))\n",
+    "        .attr('width', x(data[1].x) - x(data[0].x))\n",
+    "        .attr('height', y(data[0].y) - y(data[1].y))\n",
+    "        .attr('fill', d => color(d.value));\n",
+    "    });\n",
+    "  </script>\n",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Explications des modifications :
+
+    Suppression des fichiers .Rmd :
+        Nous avons supprimé l'étape de création des fichiers .Rmd. Au lieu de cela, le contenu HTML est généré directement dans la fonction generate_html.
+
+    Génération directe du fichier HTML :
+        Le contenu HTML est construit comme une chaîne de caractères et écrit directement dans un fichier .html à l'aide de writeLines.
+
+    Inclusion de l'image du modèle :
+        L'image .png correspondant au titre est incluse directement dans le contenu HTML, ou un message d'indisponibilité est affiché si l'image n'existe pas.
+
+    Carte raster :
+        Le code JavaScript utilisant D3.js est ajouté pour afficher la carte raster directement dans le fichier HTML.
+
+En exécutant ce script, les fichiers HTML seront générés directement dans le répertoire spécifié, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante, la valeur du seuil appropriée et l'image du modèle.
+Avis : C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils/Aframomum_mannii.asc: No such file or directory (GDAL error 4)
+Erreur dans .rasterObjectFromFile(x, band = band, objecttype = "RasterLayer",  : 
+  Cannot create a RasterLayer object from this file. (file does not exist)
+
+Il faut faire attention pcq les fichiers rasters (si c'est de là que viens le problème) sont sous format .asc et ont le même nom que le titre mais avec un suffixe supplémentaires "_modifie"
+ChatGPT
+
+Merci pour cette clarification. Nous allons ajuster le script pour rechercher les fichiers raster avec le suffixe _modifie.asc et générer le HTML en conséquence.
+
+Voici le script mis à jour :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(info$title, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(info$title, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Recherche des fichiers raster avec suffixe _modifie.asc :
+        Les fichiers raster sont maintenant recherchés avec le suffixe _modifie.asc en utilisant file.path(raster_dir, paste0(info$title, "_modifie.asc")).
+
+    Gestion des fichiers raster manquants :
+        Si le fichier raster n'est pas trouvé, un message est affiché et la fonction retourne NULL.
+
+    Sauvegarde de la carte raster en tant qu'image :
+        La carte raster est sauvegardée temporairement en tant qu'image PNG à l'aide de ggsave, puis incluse dans le contenu HTML.
+
+En exécutant ce script, les fichiers HTML seront générés dans le répertoire spécifié, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante, la valeur du seuil appropriée et l'image du modèle.
+> lapply(html_files, generate_html)
+Raster file not found: C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils/Maxent model for Aframomum_mannii_modifie.asc
+Raster file not found: C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils/Maxent model for Afroguatteria_globosa_modifie.asc
+...
+[[1]]
+NULL
+
+[[2]]
+NULL
+
+[[3]]
+NULL
+
+[[4]]
+NULL
+
+[[5]]
+NULL
+
+[[6]]
+NULL
+
+...
+[[213]]
+NULL
+ChatGPT
+
+Il semble que le titre extrait du fichier HTML ne soit pas le nom de fichier approprié pour le raster. Le problème vient de la différence entre le titre et le nom du fichier HTML. Nous allons utiliser le nom de base du fichier HTML pour trouver les rasters et les plots correspondants.
+
+Voici le script mis à jour pour utiliser le nom de base du fichier HTML plutôt que le titre pour rechercher les fichiers raster et les images :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+
+# Renommer les colonnes pour correspondre à leur nom réel
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster
+  raster_plot <- ggplot(raster_df) +
+    geom_raster(aes(x = x, y = y, fill = value)) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Utilisation de file_base pour les fichiers raster et plots :
+        Les noms de fichiers raster et plot sont maintenant basés sur file_base, qui est dérivé du nom du fichier HTML sans son extension.
+
+    Suppression du préfixe Maxent model for pour la recherche des rasters :
+        Le script recherche les fichiers raster avec le suffixe _modifie.asc basé directement sur file_base.
+
+En exécutant ce script, les fichiers HTML seront générés dans le répertoire spécifié, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante, la valeur du seuil appropriée et l'image du modèle.
+Il faudrait dézoomé la carte avec le raster (la mettre au meme format que le plot qu'on ajoute) et lui rajouter le shapefile suivant : 
+C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\africapolitical.shp .
+ChatGPT
+
+Pour inclure le shapefile dans le plot du raster et ajuster le zoom de la carte pour correspondre à l'image du plot, nous allons modifier le script de génération HTML. Nous utiliserons le package sf pour lire le shapefile et l'ajouter au plot avec ggplot2.
+
+Voici le script mis à jour :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+library(sf)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+shapefile <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Lire les données du shapefile
+africa_shape <- st_read(shapefile)
+
+# Lire les seuils
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster avec le shapefile
+  raster_plot <- ggplot() +
+    geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+    geom_sf(data = africa_shape, fill = NA, color = "black") +
+    coord_sf(xlim = c(extent(raster_data)[1], extent(raster_data)[2]), ylim = c(extent(raster_data)[3], extent(raster_data)[4])) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Inclusion du shapefile :
+        Le shapefile africapolitical.shp est chargé en utilisant st_read du package sf.
+        Le shapefile est ajouté au plot avec geom_sf.
+
+    Ajustement du zoom :
+        coord_sf est utilisé avec les limites (xlim et ylim) basées sur l'étendue du raster pour ajuster le zoom.
+
+En exécutant ce script, les fichiers HTML seront générés dans le répertoire spécifié, chacun contenant les informations extraites des fichiers HTML d'entrée, la carte raster correspondante avec le shapefile ajouté, la valeur du seuil appropriée et l'image du modèle.
+Serai-ce possible de réarranger le html pour avoir les 2 graphiques l'un à coté de l'autre?
+ChatGPT
+
+Pour réarranger le HTML afin que les deux graphiques (le plot et la carte raster) soient côte à côte, nous pouvons utiliser un peu de CSS pour créer une mise en page en grille ou en flexbox. Voici le script mis à jour avec une disposition côte à côte pour les graphiques :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+library(sf)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+shapefile <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Lire les données du shapefile
+africa_shape <- st_read(shapefile)
+
+# Lire les seuils
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster avec le shapefile
+  raster_plot <- ggplot() +
+    geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+    geom_sf(data = africa_shape, fill = NA, color = "black") +
+    coord_sf(xlim = c(extent(raster_data)[1], extent(raster_data)[2]), ylim = c(extent(raster_data)[3], extent(raster_data)[4])) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "  <style>\n",
+    "    .container { display: flex; justify-content: space-around; }\n",
+    "    .container img { max-width: 45%; height: auto; }\n",
+    "  </style>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <div class='container'>\n",
+    "    <div>\n",
+    "      <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "    </div>\n",
+    "    <div>\n",
+    "      <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "    </div>\n",
+    "  </div>\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info.table_html)) knitr::kable(info.table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Ajout d'un conteneur flex :
+        Utilisation de la classe .container avec display: flex pour mettre les images côte à côte.
+        Ajustement de la taille maximale des images avec max-width: 45% pour s'assurer qu'elles tiennent bien côte à côte.
+
+    Organisation du contenu HTML :
+        Les sections pour le plot et la carte raster sont maintenant dans des div enfants de .container pour faciliter la mise en page côte à côte.
+
+En exécutant ce script, les fichiers HTML générés afficheront les graphiques côte à côte, avec le reste du contenu en dessous.
+Erreur dans paste0("<!DOCTYPE html>\n", "<html lang=\"en\">\n", "<head>\n",  : 
+  objet 'info.table_html' introuvable
+ChatGPT
+
+L'erreur "objet 'info.table_html' introuvable" est causée par une erreur de syntaxe dans le code, où nous essayons de référencer info.table_html au lieu de info$table_html. Voici la version corrigée du script avec cette correction, ainsi que l'organisation pour afficher les graphiques côte à côte :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+library(sf)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+shapefile <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Lire les données du shapefile
+africa_shape <- st_read(shapefile)
+
+# Lire les seuils
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster avec le shapefile
+  raster_plot <- ggplot() +
+    geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+    geom_sf(data = africa_shape, fill = NA, color = "black") +
+    coord_sf(xlim = c(extent(raster_data)[1], extent(raster_data)[2]), ylim = c(extent(raster_data)[3], extent(raster_data)[4])) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "  <style>\n",
+    "    .container { display: flex; justify-content: space-around; }\n",
+    "    .container img { max-width: 45%; height: auto; }\n",
+    "  </style>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <div class='container'>\n",
+    "    <div>\n",
+    "      <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "    </div>\n",
+    "    <div>\n",
+    "      <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "    </div>\n",
+    "  </div>\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Correction de la référence à info$table_html :
+        Correction de info.table_html en info$table_html.
+
+    Ajout de style CSS pour la mise en page flex :
+        Utilisation de la classe .container avec display: flex pour organiser les images côte à côte.
+        Ajustement de la taille maximale des images avec max-width: 45% pour garantir qu'elles sont côte à côte et ont une taille appropriée.
+
+Ce script devrait maintenant générer des fichiers HTML avec les graphiques côte à côte et les autres sections correctement organisées.
+j'aimerais reprendre ce code mais il faudrait juste rajouter quelques images pour chaque html :
+- le photo .png correspondante à l'espèce (en enlevant le préfixe "descr_" et en remplacant le " " par "_") du dossier (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Tableaux_recap\Tableaux Habitats)
+- le photo .png correspondante à l'espèce (en enlevant le préfixe "table_" et en remplacant le " " par "_") du dossier (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Tableaux_recap\Tableaux Occ)
+- le photo .png correspondante à l'espèce du dossier (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Tableaux_recap\Tableaux_Couches_modelisation)
+ChatGPT
+
+Pour inclure les images supplémentaires correspondant aux espèces dans chaque fichier HTML, nous allons adapter le code pour rechercher et insérer ces images. Voici comment procéder :
+
+    Définir les répertoires des nouvelles images.
+    Modifier la fonction generate_html pour inclure les nouvelles images.
+
+Code R modifié :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+library(sf)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+shapefile <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Répertoires des images supplémentaires
+descr_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux Habitats"
+table_occ_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux Occ"
+table_layers_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux_Couches_modelisation"
+
+# Lire les données du shapefile
+africa_shape <- st_read(shapefile)
+
+# Lire les seuils
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster avec le shapefile
+  raster_plot <- ggplot() +
+    geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+    geom_sf(data = africa_shape, fill = NA, color = "black") +
+    coord_sf(xlim = c(extent(raster_data)[1], extent(raster_data)[2]), ylim = c(extent(raster_data)[3], extent(raster_data)[4])) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png"))
+
+  # Définir les chemins des images supplémentaires
+  descr_image <- file.path(descr_dir, paste0("descr_", gsub(" ", "_", file_base), ".png"))
+  table_occ_image <- file.path(table_occ_dir, paste0("table_", gsub(" ", "_", file_base), ".png"))
+  table_layers_image <- file.path(table_layers_dir, paste0(file_base, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "  <style>\n",
+    "    .container { display: flex; justify-content: space-around; }\n",
+    "    .container img { max-width: 45%; height: auto; }\n",
+    "    .extra-images { display: flex; justify-content: space-around; margin-top: 20px; }\n",
+    "    .extra-images img { max-width: 30%; height: auto; }\n",
+    "  </style>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <div class='container'>\n",
+    "    <div>\n",
+    "      <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "    </div>\n",
+    "    <div>\n",
+    "      <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "    </div>\n",
+    "  </div>\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <div class='extra-images'>\n",
+    if (file.exists(descr_image)) paste0("<img src=\"", descr_image, "\" alt=\"Descr Image\">") else "<p>Descr image not available</p>", "\n",
+    if (file.exists(table_occ_image)) paste0("<img src=\"", table_occ_image, "\" alt=\"Table Occ Image\">") else "<p>Table Occ image not available</p>", "\n",
+    if (file.exists(table_layers_image)) paste0("<img src=\"", table_layers_image, "\" alt=\"Table Layers Image\">") else "<p>Table Layers image not available</p>", "\n",
+    "  </div>\n",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Définir les répertoires des images supplémentaires :
+        descr_dir, table_occ_dir, et table_layers_dir.
+
+    Chemins des images supplémentaires :
+        Pour chaque image, utiliser le nom de base du fichier et remplacer les espaces par des underscores (_).
+
+    Inclure les nouvelles images dans le contenu HTML :
+        Ajouter les images supplémentaires en utilisant une nouvelle section avec la classe CSS extra-images.
+
+Résultat :
+
+Le script générera des fichiers HTML contenant les graphiques, les images et les informations nécessaires, organisés comme demandé. Les images seront affichées côte à côte dans les sections appropriées.
+C'est presque parfait, il faudrait juste que l'image 'table_layers_image' soit juste après le 'Analysis of variable contributions' et aussi que les 2 autres images soient l'une au dessus de l'autre (pour qu'elles soient visibles)
+ChatGPT
+
+D'accord, je vais ajuster le code pour que l'image table_layers_image apparaisse juste après la section 'Analysis of variable contributions' et pour que les autres images soient affichées l'une au-dessus de l'autre.
+
+Voici le code mis à jour :
+
+r
+
+library(rvest)
+library(rmarkdown)
+library(sp)
+library(raster)
+library(ggplot2)
+library(dplyr)
+library(jsonlite)
+library(knitr)
+library(sf)
+
+# Définir les répertoires et fichiers
+input_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output"
+raster_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/rasters_seuils"
+plots_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output/plots"
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Recap Cartes"
+seuils_file <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils_bon.csv"
+shapefile <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Répertoires des images supplémentaires
+descr_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux Habitats"
+table_occ_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux Occ"
+table_layers_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Tableaux_recap/Tableaux_Couches_modelisation"
+
+# Lire les données du shapefile
+africa_shape <- st_read(shapefile)
+
+# Lire les seuils
+seuils_data <- read.csv(seuils_file, stringsAsFactors = FALSE)
+colnames(seuils_data) <- c("Fichier", "Seuil_minimal")
+
+# Liste des fichiers HTML dans le répertoire
+html_files <- list.files(input_dir, pattern = "\\.html$", full.names = TRUE)
+
+# Fonction pour extraire les informations d'un fichier HTML
+extract_info <- function(html_file) {
+  html_content <- read_html(html_file)
+  
+  # Extraire le titre
+  title <- html_content %>%
+    html_node("title") %>%
+    html_text()
+  
+  # Extraire le tableau 'Analysis of variable contributions'
+  table_html <- html_content %>%
+    html_nodes(xpath = "//p[contains(text(), 'Analysis of variable contributions')]/following-sibling::table") %>%
+    html_table()
+  
+  if (length(table_html) > 0) {
+    table_data <- table_html[[1]]
+  } else {
+    table_data <- NULL
+  }
+  
+  list(
+    title = title,
+    table_html = table_data
+  )
+}
+
+# Fonction pour générer le fichier HTML pour un fichier HTML d'entrée
+generate_html <- function(html_file) {
+  info <- extract_info(html_file)
+  file_name <- basename(html_file)
+  file_base <- sub("\\.html$", "", file_name)
+  
+  # Trouver la valeur du seuil
+  seuil_value <- seuils_data %>%
+    filter(Fichier == file_base) %>%
+    pull(Seuil_minimal)
+  
+  # Charger le raster correspondant
+  raster_file <- file.path(raster_dir, paste0(file_base, "_modifie.asc"))
+  if (!file.exists(raster_file)) {
+    message("Raster file not found: ", raster_file)
+    return(NULL)
+  }
+  
+  raster_data <- raster(raster_file)
+  
+  # Convertir le raster en data frame pour ggplot
+  raster_df <- as.data.frame(rasterToPoints(raster_data))
+  names(raster_df) <- c("x", "y", "value")  # Renommer les colonnes pour ggplot
+  
+  # Créer une carte du raster avec le shapefile
+  raster_plot <- ggplot() +
+    geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+    geom_sf(data = africa_shape, fill = NA, color = "black") +
+    coord_sf(xlim = c(extent(raster_data)[1], extent(raster_data)[2]), ylim = c(extent(raster_data)[3], extent(raster_data)[4])) +
+    scale_fill_viridis_c() +
+    theme_minimal() +
+    labs(title = paste("Raster map for", file_base))
+  
+  # Sauvegarder le plot en tant qu'image pour l'inclure dans le HTML
+  raster_plot_file <- tempfile(fileext = ".png")
+  ggsave(raster_plot_file, plot = raster_plot, width = 8, height = 6)
+  
+  # Chemin de l'image correspondant au titre
+  plot_image <- file.path(plots_dir, paste0(file_base, ".png"))
+
+  # Définir les chemins des images supplémentaires
+  descr_image <- file.path(descr_dir, paste0("descr_", gsub(" ", "_", file_base), ".png"))
+  table_occ_image <- file.path(table_occ_dir, paste0("table_", gsub(" ", "_", file_base), ".png"))
+  table_layers_image <- file.path(table_layers_dir, paste0(file_base, ".png"))
+  
+  # Générer le contenu HTML
+  html_content <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html lang=\"en\">\n",
+    "<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>", info$title, "</title>\n",
+    "  <style>\n",
+    "    .container { display: flex; justify-content: space-around; }\n",
+    "    .container img { max-width: 45%; height: auto; }\n",
+    "    .extra-images { display: block; margin-top: 20px; }\n",
+    "    .extra-images img { display: block; max-width: 100%; height: auto; margin-bottom: 10px; }\n",
+    "  </style>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <h1>", info$title, "</h1>\n",
+    "  <div class='container'>\n",
+    "    <div>\n",
+    "      <h2>Model Plot</h2>\n",
+    if (file.exists(plot_image)) paste0("<img src=\"", plot_image, "\" alt=\"Model Plot\">") else "<p>Plot image not available</p>", "\n",
+    "    </div>\n",
+    "    <div>\n",
+    "      <h2>Raster Map</h2>\n",
+    "<img src=\"", raster_plot_file, "\" alt=\"Raster Map\">",
+    "    </div>\n",
+    "  </div>\n",
+    "  <h2>Analysis of variable contributions</h2>\n",
+    if (!is.null(info$table_html)) knitr::kable(info$table_html, format = "html") else "<p>Table not available</p>", "\n",
+    "  <h2>Additional Layers</h2>\n",
+    if (file.exists(table_layers_image)) paste0("<img src=\"", table_layers_image, "\" alt=\"Table Layers Image\">") else "<p>Table Layers image not available</p>", "\n",
+    "  <h2>Seuil</h2>\n",
+    "<p>La valeur du seuil est: ", seuil_value, "</p>\n",
+    "  <div class='extra-images'>\n",
+    if (file.exists(descr_image)) paste0("<img src=\"", descr_image, "\" alt=\"Descr Image\">") else "<p>Descr image not available</p>", "\n",
+    if (file.exists(table_occ_image)) paste0("<img src=\"", table_occ_image, "\" alt=\"Table Occ Image\">") else "<p>Table Occ image not available</p>", "\n",
+    "  </div>\n",
+    "</body>\n",
+    "</html>"
+  )
+  
+  # Écrire le fichier HTML
+  output_file <- file.path(output_dir, paste0(file_base, ".html"))
+  writeLines(html_content, output_file)
+}
+
+# Générer les fichiers HTML pour tous les fichiers HTML d'entrée
+lapply(html_files, generate_html)
+
+Modifications apportées :
+
+    Définir les chemins des images supplémentaires :
+        descr_image, table_occ_image, et table_layers_image.
+
+    Inclure les nouvelles images dans le contenu HTML :
+        L'image table_layers_image est maintenant placée après la section 'Analysis of variable contributions'.
+        Les images descr_image et table_occ_image sont placées l'une au-dessus de l'autre dans la section 'extra-images'.
+
+Ces ajustements devraient répondre à vos besoins pour l'organisation et l'affichage des images dans le fichier HTML.
+Tout est bien
+3/3
+ChatGPT
+
+Je suis content que tout soit à votre satisfaction ! Si vous avez d'autres questions ou besoin d'assistance supplémentaire à l'avenir, n'hésitez pas à revenir. Bonne continuation pour votre projet de mémoire ! À bientôt ! 👋

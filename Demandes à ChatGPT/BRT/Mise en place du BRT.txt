@@ -1,0 +1,566 @@
+https://chatgpt.com/share/d5bdb922-712a-4ec1-a504-19512c20f8f1
+https://chatgpt.com/share/ee9373aa-1c9f-4d54-836e-704afb3c3fb6
+
+J'ai effectué un code R qui me permet d'obtenir un indice de richesse botanique pour différents petits carrés d'une zone d'étude (ID_grid). 
+library(sf)
+library(dplyr)
+library(readxl)
+library(readr)
+library(tidyr)
+library(purrr)
+
+# Charger les données spatiales
+zone2 <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+CS <- 0.1  # Taille de la cellule en degrés décimaux
+grid <- st_make_grid(zone2, n = c(ceiling(diff(st_bbox(zone2)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone2)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>%
+  mutate(ID_grid = row_number()) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone2)
+grid <- filter(grid, ID_grid %in% grid_cropped$ID_grid)
+grid <- as(grid, "Spatial")
+zone <- unionSpatialPolygons(grid, rep(1, length(grid)))
+rm(zone2, CS); gc()
+
+# Charger les données d'espèces et RB_zone_grid
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx")
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+
+# Calculer le nombre d'occurrences de chaque ID_grid
+occurrences <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  summarise(occurrences = n()) %>%
+  ungroup()
+
+# Calculer l'indice de richesse botanique pour chaque ID_grid filtré
+calculate_mean_threatened_species <- function(id) {
+  subset_data <- filter(filtered_RB, ID_grid == id)
+  tirages <- replicate(100, {
+    tirage <- sample_n(subset_data, 10, replace = TRUE)
+    sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+  })
+  mean(tirages)
+}
+
+# Appliquer la fonction à chaque ID_grid et construire le tableau final
+final_results <- filtered_RB %>%
+  distinct(ID_grid) %>%
+  mutate(Indice = map_dbl(ID_grid, calculate_mean_threatened_species)) %>%
+  left_join(occurrences, by = "ID_grid")
+
+# Afficher les résultats
+print(final_results)
+
+J'ai ensuite pris les différentes valeurs de variables environnementales pour ces carrés.
+# Load climatic data
+bio1_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif")
+bio2_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_2.tif")
+bio4_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_4.tif")
+bio7_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_7.tif")
+bio12_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_12.tif")
+bio16_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_16.tif")
+bio17_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_17.tif")
+hand_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Merit Hydro HAND/HAND2.tif")
+CLYPPT_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/CLYPPT_africa.tif")
+SNDPPT_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/SNDPPT_africa.tif")
+BDTICM_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/BDTICM_africa.tif")
+CECSOL_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/CECSOL_africa.tif")
+SLTPPT_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/SLTPPT_africa.tif")
+
+
+# extract data per cell of grid
+raster_grid <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster_grid.tif")
+centroids <- rasterToPoints(raster_grid, spatial = TRUE)
+centroids_df <- data.frame(centroids@coords)
+bio1 <- extract(bio1_rast, centroids_df)
+bio2 <- extract(bio2_rast, centroids_df)
+bio4 <- extract(bio4_rast, centroids_df)
+bio7 <- extract(bio7_rast, centroids_df)
+bio12 <- extract(bio12_rast, centroids_df)
+bio16 <- extract(bio16_rast, centroids_df)
+bio17 <- extract(bio17_rast, centroids_df)
+hand <- extract(hand_rast, centroids_df)
+CLYPPT <- extract(CLYPPT_rast, centroids_df)
+SNDPPT <- extract(SNDPPT_rast, centroids_df)
+BDTICM <- extract(BDTICM_rast, centroids_df)
+CECSOL <- extract(CECSOL_rast, centroids_df)
+SLTPPT <- extract(SLTPPT_rast, centroids_df)
+
+J'aimerais ensuite en modifiant un bout de code que je vais mettre par la suite, produire un dataframe reprenant les valeurs environnementales pour tous les carrés et les valeurs de l'indice (colonne Indice de 'final_results') des carrés (ID_grid) pour lesquels il y a au minimum 400 occurrences (colonne occurrences de 'final_results').
+rm(hand_rast, bio1_rast, bio2_rast, bio4_rast, bio7_rast, bio12_rast, bio16_rast, bio17_rast, CLYPPT_rast, ACDWRB_rast, SNDPPT_rast, BDTICM_rast, CECSOL_rast, SLTPPT_rast, OCDENS_rast)
+
+data = as.data.frame(matrix(0,nrow=nrow(result),ncol=18))
+colnames(data) = c("long","lat","ID_grid","indice","hand","bio1","bio2","bio4","bio7","bio12","bio16","bio17","CLYPPT","SNDPPT","BDTICM","CECSOL","SLTPPT")
+
+data$ID_grid = result$ID_grid
+
+data$hand = hand
+data$bio1 = bio1
+data$bio2 = bio2
+data$bio4 = bio4
+data$bio7 = bio7
+data$bio12 = bio12
+data$bio16 = bio16
+data$bio17 = bio17
+data$CLYPPT = CLYPPT
+data$SNDPPT = SNDPPT
+data$BDTICM = BDTICM
+data$CECSOL = CECSOL
+data$SLTPPT = SLTPPT
+data$landcov = landcov
+data$indice = 
+
+matching_rows <- centroids_df$ID_grid %in% result$ID_grid
+data[matching_rows, "long"] <- coordinates(centroids_df)[matching_rows, 1]
+data[matching_rows, "lat"] <- coordinates(centroids_df)[matching_rows, 2]
+ChatGPT
+
+Pour créer un dataframe qui combine les valeurs environnementales avec les indices de richesse botanique pour les carrés ayant au moins 400 occurrences, vous pouvez suivre ces étapes :
+
+    Filtrer les données : Utilisez les données de final_results pour sélectionner les carrés avec au moins 400 occurrences.
+
+    Créer un dataframe de données environnementales : Vous avez déjà extrait les valeurs environnementales pour chaque cellule de la grille. Maintenant, vous devez les combiner dans un dataframe avec les ID de grille correspondants.
+
+    Fusionner les données : Associez les données environnementales avec les indices de richesse botanique filtrés.
+
+Voici comment vous pouvez procéder en utilisant votre code comme base :
+Étape 1 : Filtrer les carrés avec au moins 400 occurrences
+
+r
+
+# Filtrer les carrés avec au moins 400 occurrences
+filtered_final_results <- final_results %>%
+  filter(occurrences >= 400)
+
+# Sélectionner les ID_grid filtrés
+filtered_ID_grids <- filtered_final_results$ID_grid
+
+Étape 2 : Créer le dataframe des données environnementales
+
+r
+
+# Créer un dataframe pour les données environnementales
+data <- data.frame(
+  long = centroids_df[, 1],  # Longitudes des centres des carrés
+  lat = centroids_df[, 2],   # Latitudes des centres des carrés
+  ID_grid = centroids_df$ID_grid,  # ID_grid des carrés
+  indice = ifelse(centroids_df$ID_grid %in% filtered_ID_grids, filtered_final_results$Indice, NA),  # Indice de richesse botanique pour les carrés filtrés
+  hand = hand,
+  bio1 = bio1,
+  bio2 = bio2,
+  bio4 = bio4,
+  bio7 = bio7,
+  bio12 = bio12,
+  bio16 = bio16,
+  bio17 = bio17,
+  CLYPPT = CLYPPT,
+  SNDPPT = SNDPPT,
+  BDTICM = BDTICM,
+  CECSOL = CECSOL,
+  SLTPPT = SLTPPT
+)
+
+Explication :
+
+    filtered_final_results contient les résultats de final_results filtrés pour les carrés avec au moins 400 occurrences.
+    data est construit en utilisant les valeurs extraites des rasters environnementaux (hand, bio1, bio2, etc.) et en ajoutant la colonne indice qui contient les indices de richesse botanique uniquement pour les carrés filtrés, et NA pour les autres.
+
+Notes :
+
+    Assurez-vous que centroids_df contient bien les coordonnées des centres de vos carrés de grille et que ces coordonnées sont correctement alignées avec les ID_grid.
+    Vous pouvez ajuster les noms de colonnes et les indices de vos données environnementales en fonction de vos besoins spécifiques.
+    Cette approche suppose que toutes les étapes précédentes (extraction des valeurs environnementales, calcul des indices de richesse botanique) ont été exécutées correctement et que les données sont bien alignées avec les ID_grid.
+
+En suivant ces étapes, vous devriez obtenir un dataframe data contenant toutes les informations nécessaires pour votre analyse environnementale et botanique.
+Il faudrait rajouter des lignes (dans 'filtered_final_results') avec les numéros manquants (de 1 à 10962) pour la colonne ID_grid et NA dans les autres colonnes.
+6/6
+ChatGPT
+
+Pour rajouter des lignes manquantes dans filtered_final_results pour tous les ID_grid de 1 à 10962 avec des valeurs NA dans les autres colonnes, vous pouvez procéder comme suit :
+Étape 1 : Créer une liste de tous les ID_grid de 1 à 10962
+
+r
+
+all_ID_grids <- 1:10962
+
+Étape 2 : Fusionner avec filtered_final_results pour compléter les lignes manquantes
+
+r
+
+# Créer un dataframe avec tous les ID_grid de 1 à 10962
+all_results <- data.frame(ID_grid = all_ID_grids)
+
+# Fusionner avec filtered_final_results pour remplir les valeurs existantes
+final_results_complete <- merge(all_results, filtered_final_results, by = "ID_grid", all.x = TRUE)
+
+Étape 3 : Remplacer les valeurs manquantes par NA
+
+r
+
+# Remplacer les valeurs manquantes par NA
+final_results_complete[is.na(final_results_complete)] <- NA
+
+Étape 4 : Créer le dataframe de données environnementales complet
+
+r
+
+# Créer un dataframe pour les données environnementales
+data <- data.frame(
+  long = centroids_df[, 1],  # Longitudes des centres des carrés
+  lat = centroids_df[, 2],   # Latitudes des centres des carrés
+  ID_grid = final_results_complete$ID_grid,  # ID_grid des carrés
+  indice = final_results_complete$Indice,  # Indice de richesse botanique pour les carrés filtrés
+  hand = hand,
+  bio1 = bio1,
+  bio2 = bio2,
+  bio4 = bio4,
+  bio7 = bio7,
+  bio12 = bio12,
+  bio16 = bio16,
+  bio17 = bio17,
+  CLYPPT = CLYPPT,
+  SNDPPT = SNDPPT,
+  BDTICM = BDTICM,
+  CECSOL = CECSOL,
+  SLTPPT = SLTPPT
+)
+
+Explication :
+
+    all_ID_grids contient tous les ID_grid de 1 à 10962.
+    final_results_complete est obtenu en fusionnant all_results (contenant tous les ID_grid) avec filtered_final_results pour remplir les valeurs existantes.
+    Les valeurs manquantes dans final_results_complete sont remplacées par NA.
+    data est construit en utilisant final_results_complete qui contient toutes les lignes avec les ID_grid de 1 à 10962, avec les valeurs d'indice de richesse botanique pour les ID_grid existants et NA pour les autres.
+
+Cette approche garantit que vous obtenez un dataframe data complet avec toutes les lignes pour chaque ID_grid de 1 à 10962, en remplissant les valeurs d'indice de richesse botanique pour ceux qui existent et en ajoutant NA pour ceux qui ne sont pas dans filtered_final_results. Assurez-vous que centroids_df est correctement aligné avec les ID_grid pour obtenir les bonnes coordonnées spatiales.
+> # Filtrer les carrés avec au moins 400 occurrences
+> filtered_final_results <- final_results %>%
++   filter(occurrences >= 400)
+> # Sélectionner les ID_grid filtrés
+> filtered_ID_grids <- filtered_final_results$ID_grid
+> all_ID_grids <- 1:10962
+> # Créer un dataframe avec tous les ID_grid de 1 à 10962
+> all_results <- data.frame(ID_grid = all_ID_grids)
+> # Fusionner avec filtered_final_results pour remplir les valeurs existantes
+> final_results_complete <- merge(all_results, filtered_ID_grids, by = "ID_grid", all.x = TRUE)
+Erreur dans fix.by(by.y, y) : 
+  'by' doit spécifier une colonne unique correcte
+ChatGPT
+
+Il semble qu'il y ait une erreur dans la façon dont vous fusionnez les données. L'erreur mentionne que 'by' doit spécifier une colonne unique correcte. Cela est dû à une mauvaise utilisation de la fonction merge() dans le contexte actuel. Voici comment vous pouvez corriger cela :
+Correction de la fusion des données
+
+Pour créer final_results_complete, qui contient toutes les lignes pour les ID_grid de 1 à 10962 avec des valeurs d'indice de richesse botanique pour ceux qui ont au moins 400 occurrences et NA pour les autres, vous pouvez procéder comme suit :
+
+r
+
+# Filtrer les carrés avec au moins 400 occurrences
+filtered_final_results <- final_results %>%
+  filter(occurrences >= 400)
+
+# Sélectionner les ID_grid filtrés
+filtered_ID_grids <- filtered_final_results$ID_grid
+
+# Créer un dataframe avec tous les ID_grid de 1 à 10962
+all_ID_grids <- 1:10962
+all_results <- data.frame(ID_grid = all_ID_grids)
+
+# Fusionner avec filtered_final_results pour remplir les valeurs existantes
+final_results_complete <- merge(all_results, filtered_final_results, by = "ID_grid", all.x = TRUE)
+
+Explication :
+
+    filtered_final_results contient les résultats filtrés de final_results pour les ID_grid ayant au moins 400 occurrences.
+    filtered_ID_grids est une liste des ID_grid filtrés à partir de filtered_final_results.
+    all_ID_grids contient tous les ID_grid de 1 à 10962.
+    all_results est un dataframe contenant une colonne ID_grid avec tous les ID_grid possibles.
+    merge() fusionne all_results avec filtered_final_results en utilisant by = "ID_grid" pour combiner les données en fonction de l'ID_grid. all.x = TRUE assure que toutes les lignes de all_results sont conservées, avec NA où il n'y a pas de correspondance dans filtered_final_results.
+
+Après cette fusion correcte, final_results_complete devrait contenir toutes les lignes pour les ID_grid de 1 à 10962, avec les valeurs d'indice de richesse botanique pour ceux qui existent et NA pour les autres. Vous pourrez ensuite utiliser final_results_complete pour construire votre dataframe data avec toutes les données environnementales nécessaires.
+Il me faudrait ensuite transformer la colone indice de ce code en prenant les valeurs de la colonne indice de 'final_results_complete'.
+# Créer un dataframe pour les données environnementales
+data <- data.frame(
+  long = centroids_df[, 1],  # Longitudes des centres des carrés
+  lat = centroids_df[, 2],   # Latitudes des centres des carrés
+  indice = 
+  hand = hand,
+  bio1 = bio1,
+  bio2 = bio2,
+  bio4 = bio4,
+  bio7 = bio7,
+  bio12 = bio12,
+  bio16 = bio16,
+  bio17 = bio17,
+  CLYPPT = CLYPPT,
+  SNDPPT = SNDPPT,
+  BDTICM = BDTICM,
+  CECSOL = CECSOL,
+  SLTPPT = SLTPPT
+)
+2/2
+ChatGPT
+
+Pour remplacer la colonne indice dans votre dataframe data par les valeurs de final_results_complete$Indice, vous pouvez simplement l'assigner comme suit :
+
+r
+
+# Créer un dataframe pour les données environnementales
+data <- data.frame(
+  long = centroids_df[, 1],  # Longitudes des centres des carrés
+  lat = centroids_df[, 2],   # Latitudes des centres des carrés
+  indice = final_results_complete$Indice,  # Utilisation des valeurs d'indice de final_results_complete
+  hand = hand,
+  bio1 = bio1,
+  bio2 = bio2,
+  bio4 = bio4,
+  bio7 = bio7,
+  bio12 = bio12,
+  bio16 = bio16,
+  bio17 = bio17,
+  CLYPPT = CLYPPT,
+  SNDPPT = SNDPPT,
+  BDTICM = BDTICM,
+  CECSOL = CECSOL,
+  SLTPPT = SLTPPT
+)
+
+Explication :
+
+    final_results_complete$Indice contient les valeurs d'indice de richesse botanique pour chaque ID_grid de final_results_complete.
+    En assignant final_results_complete$Indice à data$indice, vous remplacez la colonne indice dans data par ces valeurs.
+
+Assurez-vous que centroids_df contient les bonnes coordonnées des centres des carrés et que toutes les autres variables (hand, bio1, bio2, etc.) sont correctement alignées avec les ID_grid correspondants. Cette approche devrait vous fournir un dataframe data complet avec toutes les informations nécessaires pour votre analyse environnementale et botanique.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Voici le code R que j'utilise pour calculer un indice de richesse botanique. J'aimerais le modifier afin qu'il soit plus concis et surtout qu'il prenne moins de temps que actuellement. J'aimerais qu'il rajoute une colonne pour le fichiers final de résultats dans laquelle il ajoutera le nombre de fois que ID_grid apparait dans 'RB_zone_grid' pour chaque ID_grid correspondant présent dans le fichier résultat.
+```{r Downloading spatial data}
+zone2 <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone2, n = c(ceiling(diff(st_bbox(zone2)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone2)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone2) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+grid <- as(grid, "Spatial")
+zone = unionSpatialPolygons(grid, rep(1,length(grid)))
+rm(zone2,CS) ; gc()
+```
+
+```{r Creating botanical richness metric}
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx") #on prend toutes les sp menacees, meme les arbres
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Construction de la metrique de richesse botanique à partir de la méthode "analyse de rarefaction" provenant de la these de Nicolas
+
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+# Initialiser une liste pour stocker les résultats
+results <- list()
+# Boucle sur chaque ID_grid filtré
+for (id in unique(filtered_RB$ID_grid)) {
+  # Filtrer les lignes pour cet ID_grid
+  subset_data <- filtered_RB %>%
+    filter(ID_grid == id)
+  # Initialiser une liste pour stocker les moyennes de chaque tirage
+  tirage_means <- numeric(100)
+  # Effectuer 100 tirages
+  for (i in 1:100) {
+    tirage <- subset_data %>%
+      sample_n(10, replace = TRUE)  # Tirage aléatoire de 10 lignes avec remise
+    # Calculer le nombre d'espèces menacées dans ce tirage
+    count_threatened_species <- sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+    # Stocker le résultat
+    tirage_means[i] <- count_threatened_species
+  }
+  # Calculer la moyenne des 100 tirages pour cet ID_grid
+  mean_threatened_species <- mean(tirage_means)
+  # Ajouter le résultat à la liste
+  results[[as.character(id)]] <- mean_threatened_species
+}
+# Convertir la liste des résultats en data frame
+final_results <- data.frame(
+  ID_grid = as.numeric(names(results)),
+  Indice = unlist(results)
+)
+# Afficher les résultats
+print(final_results)
+```
+2/2
+ChatGPT
+
+Voici une version modifiée et optimisée du code en R. Cette version utilise des fonctions vectorisées et des opérations de regroupement pour améliorer les performances. Elle ajoute également une colonne comptant le nombre de fois que chaque ID_grid apparaît dans RB_zone_grid.
+
+r
+
+library(sf)
+library(dplyr)
+library(readxl)
+library(readr)
+library(tidyr)
+library(purrr)
+
+# Charger les données spatiales
+zone2 <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+CS <- 0.1  # Taille de la cellule en degrés décimaux
+grid <- st_make_grid(zone2, n = c(ceiling(diff(st_bbox(zone2)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone2)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>%
+  mutate(ID_grid = row_number()) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone2)
+grid <- filter(grid, ID_grid %in% grid_cropped$ID_grid)
+grid <- as(grid, "Spatial")
+zone <- unionSpatialPolygons(grid, rep(1, length(grid)))
+rm(zone2, CS); gc()
+
+# Charger les données d'espèces et RB_zone_grid
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx")
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+
+# Calculer le nombre d'occurrences de chaque ID_grid
+occurrences <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  summarise(occurrences = n()) %>%
+  ungroup()
+
+# Calculer l'indice de richesse botanique pour chaque ID_grid filtré
+calculate_mean_threatened_species <- function(id) {
+  subset_data <- filter(filtered_RB, ID_grid == id)
+  tirages <- replicate(100, {
+    tirage <- sample_n(subset_data, 10, replace = TRUE)
+    sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+  })
+  mean(tirages)
+}
+
+# Appliquer la fonction à chaque ID_grid et construire le tableau final
+final_results <- filtered_RB %>%
+  distinct(ID_grid) %>%
+  mutate(Indice = map_dbl(ID_grid, calculate_mean_threatened_species)) %>%
+  left_join(occurrences, by = "ID_grid")
+
+# Afficher les résultats
+print(final_results)
+
+Explications des modifications :
+
+    Chargement des données spatiales : L'utilisation de row_number() pour générer ID_grid et l'utilisation de filter() permettent d'améliorer la clarté du code.
+
+    Filtrage et comptage : Les opérations de filtrage et de comptage sont effectuées directement avec dplyr pour une meilleure performance et lisibilité.
+
+    Calcul de l'indice de richesse botanique : La fonction calculate_mean_threatened_species est définie pour encapsuler la logique de calcul de l'indice de richesse, ce qui permet de l'appliquer efficacement à chaque ID_grid avec map_dbl().
+
+    Ajout des occurrences : L'opération de jointure avec left_join() permet d'ajouter le nombre d'occurrences de chaque ID_grid dans le tableau final.
+
+Cette version du code est plus concise, mieux organisée, et devrait offrir de meilleures performances grâce à l'utilisation de fonctions vectorisées et de regroupements efficaces.
+Ce calcul prend de nouveau un temps conséquent, y aurait-il moyen de le diminuer?
+ChatGPT
+
+Pour améliorer davantage les performances du code, nous pouvons exploiter les capacités de parallélisation. Le package parallel en R permet de répartir les tâches sur plusieurs cœurs de processeur. Voici une version du code utilisant la parallélisation avec le package parallel pour accélérer le calcul de l'indice de richesse botanique :
+
+r
+
+library(sf)
+library(dplyr)
+library(readxl)
+library(readr)
+library(tidyr)
+library(parallel)
+
+# Charger les données spatiales
+zone2 <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+CS <- 0.1  # Taille de la cellule en degrés décimaux
+grid <- st_make_grid(zone2, n = c(ceiling(diff(st_bbox(zone2)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone2)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>%
+  mutate(ID_grid = row_number()) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone2)
+grid <- filter(grid, ID_grid %in% grid_cropped$ID_grid)
+grid <- as(grid, "Spatial")
+zone <- unionSpatialPolygons(grid, rep(1, length(grid)))
+rm(zone2, CS); gc()
+
+# Charger les données d'espèces et RB_zone_grid
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx")
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+
+# Calculer le nombre d'occurrences de chaque ID_grid
+occurrences <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  summarise(occurrences = n()) %>%
+  ungroup()
+
+# Calculer l'indice de richesse botanique pour chaque ID_grid filtré
+calculate_mean_threatened_species <- function(id, sp_etude, filtered_RB) {
+  subset_data <- filter(filtered_RB, ID_grid == id)
+  tirages <- replicate(100, {
+    tirage <- sample_n(subset_data, 10, replace = TRUE)
+    sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+  })
+  mean(tirages)
+}
+
+# Déterminer le nombre de cœurs disponibles pour la parallélisation
+num_cores <- detectCores() - 1
+
+# Utiliser mclapply pour paralléliser les calculs
+results_list <- mclapply(unique(filtered_RB$ID_grid), calculate_mean_threatened_species, sp_etude = sp_etude, filtered_RB = filtered_RB, mc.cores = num_cores)
+
+# Construire le tableau final avec les résultats
+final_results <- data.frame(
+  ID_grid = unique(filtered_RB$ID_grid),
+  Indice = unlist(results_list)
+) %>%
+  left_join(occurrences, by = "ID_grid")
+
+# Afficher les résultats
+print(final_results)
+
+Explications des modifications :
+
+    Chargement des packages : Ajout du package parallel.
+
+    Détection des cœurs disponibles : Utilisation de detectCores() pour déterminer le nombre de cœurs disponibles et réserver un cœur pour le système en soustrayant 1.
+
+    Parallélisation du calcul : Utilisation de mclapply() pour paralléliser les calculs de l'indice de richesse botanique. La fonction calculate_mean_threatened_species est passée à mclapply() avec les paramètres supplémentaires sp_etude et filtered_RB.
+
+En utilisant mclapply(), le calcul de l'indice de richesse botanique est réparti sur plusieurs cœurs, ce qui peut réduire considérablement le temps de traitement global. Assurez-vous que votre environnement R est configuré pour supporter la parallélisation, notamment si vous utilisez Windows, car mclapply() fonctionne nativement sur Unix et Linux, tandis que sous Windows, il est nécessaire d'utiliser parLapply avec makeCluster.

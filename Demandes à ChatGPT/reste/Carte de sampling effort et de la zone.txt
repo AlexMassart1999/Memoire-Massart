@@ -1,0 +1,288 @@
+https://chatgpt.com/share/c70c7cd5-d3eb-4fa3-a470-91f91453e022 (sampling)
+
+https://chatgpt.com/share/d7263124-bad3-45a7-860d-df3e25ecf1aa (zone)
+
+ChatGPT
+J'ai un code (que je vais mettre en fin de commentaire) qui me permet de produire une carte donnant l'effort d’échantillonnage botanique en Afrique centrale. Le code est correcte sauf la partie permettant d'obtenir le plot, qu'il va donc falloir modifier (le reste ne doit pas être modifié). Il faudrait modifier les numéros des 'sample' pour qu'ils correspondent à ceux présents plus haut dans le texte. Il faudrait également que les couleurs soient organisées d'une façon différente, allant de froid (beige-jaune) jusqu'à chaud (rouge foncé). 
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ggspatial)
+library(future.apply)
+library(readr)
+library(raster)
+library(mapview)
+library(terra)
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv") #downloading if steps above already done
+AfricanCountries <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+ID_RB_speec_dups <- unique(RB_zone_grid$ID[duplicated(RB_zone_grid$ID)]) #which ID specimens are duplicated by st_intersection (= falling at the border of two different cells)
+RB_zone_grid <- RB_zone_grid %>% # Replace the line above so we randomly give one cell for specimens that fall between two grid cells
+  group_by(ID) %>%
+  slice_sample(n = 1) %>%
+  ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>%
+  group_by (ID_grid) %>%
+  summarise(full_esp =  n_distinct(tax_infra_level), full_spec = n())   #count number of species and specimens per bioregion
+flora_all_grid <- left_join(grid, flora_all_grid, by="ID_grid") %>%
+  dplyr::select(ID_grid, full_esp, full_spec)
+
+sample0<- flora_all_grid %>% # allow to divide the flora in sp with more or less presence in grid
+  #the names of samples are not good
+  filter(is.na(full_spec)) %>% 
+  st_union()
+sample1_10<- flora_all_grid %>% 
+  filter(full_spec<=10 & full_spec>1) %>% 
+  st_union()
+sample10_50<- flora_all_grid %>% 
+  filter(full_spec<=50 & full_spec>10) %>% 
+  st_union()
+sample50_100<- flora_all_grid %>% 
+  filter(full_spec<=100 & full_spec>50) %>% 
+  st_union()
+sample100_125 <- flora_all_grid %>% 
+  filter(full_spec<=125 & full_spec>100)
+sample125<- flora_all_grid %>% 
+  filter(full_spec>125) %>% 
+  st_union()
+
+# Plot
+ggplot() + 
+  geom_sf(data = sample50_500$geometry, aes(fill=sample50_500$full_spec), color=NA) +
+  scale_fill_gradient(low = "yellow", high = "red", na.value = NA) +
+  geom_sf(data = sample500, fill="#333399", color=NA) +
+  geom_sf(data = sample0_50, fill="#CCCC99", color=NA) +
+  geom_sf(data = sample0, fill="#666666", color=NA) +
+  geom_sf(data = AfricanCountries, fill = NA, color = "black", size = 0.8) +
+  coord_sf(xlim = c(7.5, 16.54), ylim = c(-5.99, 6.63), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true",  height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  theme (axis.text=element_text(size=14, color ="black"), axis.title=element_blank(), legend.title=element_blank(), legend.text=element_text(size=16))
+ggsave("Sampling_effort_image.png", width = 11.69, height = 8.27, dpi = 600)
+ChatGPT
+
+Pour répondre à vos besoins, il faut ajuster les étiquettes de vos groupes d'échantillons (sample) et modifier le code de génération du graphique pour utiliser une échelle de couleurs allant du beige-jaune au rouge foncé. Voici comment le code peut être réécrit :
+
+    Corriger les étiquettes des échantillons.
+    Ajuster le graphique pour qu'il utilise les nouvelles étiquettes et une échelle de couleurs appropriée.
+
+Voici le code modifié :
+
+r
+
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ggspatial)
+library(future.apply)
+library(readr)
+library(raster)
+library(mapview)
+library(terra)
+
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv") #downloading if steps above already done
+AfricanCountries <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+ID_RB_speec_dups <- unique(RB_zone_grid$ID[duplicated(RB_zone_grid$ID)]) #which ID specimens are duplicated by st_intersection (= falling at the border of two different cells)
+RB_zone_grid <- RB_zone_grid %>% # Replace the line above so we randomly give one cell for specimens that fall between two grid cells
+  group_by(ID) %>%
+  slice_sample(n = 1) %>%
+  ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>%
+  group_by (ID_grid) %>%
+  summarise(full_esp =  n_distinct(tax_infra_level), full_spec = n())   #count number of species and specimens per bioregion
+flora_all_grid <- left_join(grid, flora_all_grid, by="ID_grid") %>%
+  dplyr::select(ID_grid, full_esp, full_spec)
+
+sample0<- flora_all_grid %>% # allow to divide the flora in sp with more or less presence in grid
+  filter(is.na(full_spec)) %>% 
+  st_union()
+sample1_10<- flora_all_grid %>% 
+  filter(full_spec<=10 & full_spec>0) %>% 
+  st_union()
+sample11_50<- flora_all_grid %>% 
+  filter(full_spec<=50 & full_spec>10) %>% 
+  st_union()
+sample51_100<- flora_all_grid %>% 
+  filter(full_spec<=100 & full_spec>50) %>% 
+  st_union()
+sample101_125 <- flora_all_grid %>% 
+  filter(full_spec<=125 & full_spec>100) %>% 
+  st_union()
+sample126<- flora_all_grid %>% 
+  filter(full_spec>125) %>% 
+  st_union()
+
+# Plot
+ggplot() + 
+  geom_sf(data = sample0, fill = "#FFFACD", color = NA) + # LightYellow
+  geom_sf(data = sample1_10, fill = "#FFD700", color = NA) + # Gold
+  geom_sf(data = sample11_50, fill = "#FFA500", color = NA) + # Orange
+  geom_sf(data = sample51_100, fill = "#FF4500", color = NA) + # OrangeRed
+  geom_sf(data = sample101_125, fill = "#FF0000", color = NA) + # Red
+  geom_sf(data = sample126, fill = "#8B0000", color = NA) + # DarkRed
+  geom_sf(data = AfricanCountries, fill = NA, color = "black", size = 0.8) +
+  coord_sf(xlim = c(7.5, 16.54), ylim = c(-5.99, 6.63), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true",  height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  theme(axis.text = element_text(size = 14, color = "black"), axis.title = element_blank(), legend.title = element_blank(), legend.text = element_text(size = 16))
+
+ggsave("Sampling_effort_image.png", width = 11.69, height = 8.27, dpi = 600)
+
+Modifications apportées :
+
+    Correction des noms des échantillons (sample).
+    Utilisation de couleurs allant du beige-jaune au rouge foncé pour représenter les différents niveaux d'échantillonnage.
+    Ajustement des geom_sf pour utiliser les nouvelles variables et couleurs.
+
+Ce code devrait produire une carte avec les couleurs souhaitées et les bonnes étiquettes pour les niveaux d'échantillonnage.
+
+
+
+
+
+
+
+
+
+
+
+
+J'ai un code (que je vais mettre en fin de commentaire) qui me permet de produire une carte. Le code est correcte sauf la partie permettant d'obtenir le plot, qu'il va donc falloir modifier (le reste ne doit pas être modifié). Il faudrait juste que la zone d'étude soit mise en avant correctement.
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ggspatial)
+library(future.apply)
+library(readr)
+library(raster)
+library(mapview)
+library(terra)
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+# Plot
+ggplot() + 
+  geom_sf(data = AfricanCountries, fill = NA, color = "black", size = 0.8) +
+  coord_sf(xlim = c(7.5, 16.54), ylim = c(-5.99, 6.63), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true",  height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  theme(axis.text = element_text(size = 14, color = "black"), axis.title = element_blank(), legend.title = element_blank(), legend.text = element_text(size = 16))
+
+ggsave("Study_area_image.png", width = 11.69, height = 8.27, dpi = 600)
+ChatGPT
+
+Pour mettre en avant correctement la zone d'étude sur votre carte, vous pouvez ajouter cette zone en tant que couche supplémentaire dans le plot. Voici la partie modifiée du code pour générer la carte avec la zone d'étude mise en avant :
+
+r
+
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ggspatial)
+library(future.apply)
+library(readr)
+library(raster)
+library(mapview)
+library(terra)
+
+# Charger la zone d'étude
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+CS = 0.1 # taille en degrés décimaux de la taille de la cellule
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = TRUE) #création de la grille dans la zone
+grid <- as_tibble(grid) %>% # intégrer le numéro de cellule dans la grille
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #prendre uniquement les ID_grid dans la zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filtrer la grille pour avoir les bons ID_grid (pas dans la mer)
+
+# Chargement des pays africains (si ce n'est pas déjà chargé)
+# Assurez-vous que AfricanCountries est chargé avec les limites des pays africains
+
+# Plot
+ggplot() + 
+  geom_sf(data = AfricanCountries, fill = NA, color = "black", size = 0.8) +
+  geom_sf(data = zone, fill = "blue", color = "blue", alpha = 0.5) + # ajouter la zone d'étude en surbrillance
+  geom_sf(data = grid, fill = NA, color = "red", size = 0.5) + # ajouter la grille
+  coord_sf(xlim = c(7.5, 16.54), ylim = c(-5.99, 6.63), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true",  height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  theme(axis.text = element_text(size = 14, color = "black"), axis.title = element_blank(), legend.title = element_blank(), legend.text = element_text(size = 16))
+
+# Sauvegarder l'image
+ggsave("Study_area_image.png", width = 11.69, height = 8.27, dpi = 600)
+
+Les modifications incluent l'ajout de la couche zone avec geom_sf(data = zone, fill = "blue", color = "blue", alpha = 0.5) pour mettre en avant la zone d'étude. Vous pouvez ajuster les paramètres fill, color et alpha pour obtenir l'effet visuel désiré.
+Je n'ai pas besoin d'avoir la grille en plus et j'aimerais juste que l'image soit "dézoomée" et contienne une plus grande zone (le tout en gardant la zone d'intéret en surbrillance bleue)
+ChatGPT
+
+D'accord, vous pouvez ajuster le code pour supprimer la grille et étendre la zone affichée. Voici comment modifier le code en conséquence :
+
+    Supprimer les éléments liés à la grille.
+    Ajuster les limites de la carte pour la "dézoomer".
+
+Voici le code modifié :
+
+r
+
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ggspatial)
+library(future.apply)
+library(readr)
+library(raster)
+library(mapview)
+library(terra)
+
+# Charger la zone d'étude
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+# Chargement des pays africains (si ce n'est pas déjà chargé)
+# Assurez-vous que AfricanCountries est chargé avec les limites des pays africains
+
+# Plot
+ggplot() + 
+  geom_sf(data = AfricanCountries, fill = NA, color = "black", size = 0.8) +
+  geom_sf(data = zone, fill = "blue", color = "blue", alpha = 0.5) + # ajouter la zone d'étude en surbrillance
+  coord_sf(xlim = c(0, 25), ylim = c(-10, 10), expand = FALSE) + # étendre les limites pour "dézoomer"
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true",  height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  theme(axis.text = element_text(size = 14, color = "black"), axis.title = element_blank(), legend.title = element_blank(), legend.text = element_text(size = 16))
+
+# Sauvegarder l'image
+ggsave("Study_area_image.png", width = 11.69, height = 8.27, dpi = 600)
+
+Dans ce code, j'ai supprimé la partie relative à la grille et ajusté les limites de la carte avec coord_sf(xlim = c(0, 25), ylim = c(-10, 10), expand = FALSE) pour "dézoomer" et afficher une zone plus large. Vous pouvez ajuster les valeurs de xlim et ylim pour mieux adapter l'affichage à vos besoins.

@@ -1,0 +1,350 @@
+https://chatgpt.com/share/c7e9220e-781b-4628-8896-6dd47168ac6f
+
+
+
+
+Bonjour Chat, j'aimerais, à partir de ce code qui calcule plusieurs modélisations BRT d'un indice de richesse, avoir l'impact moyen (sur les 30 BRT) de chaque couche utilisée : 
+
+
+{r load-packages}
+#### Telechargement des packages necessaires pour la suite du code
+library(tidyverse)
+library(sf)
+library(ggplot2)
+library(xlsx)  # Excel
+library(readxl)
+library(raster)
+library(knitr)
+library(blockCV) #BRT
+library(dismo)
+library(exactextractr)
+library(gbm)
+library(geosphere)
+library(lubridate)
+library(maptools)
+library(ncdf4)
+library(ncf)
+library(RColorBrewer)
+library(rgdal)
+library(rgeos)
+library(rasterVis)
+library(purrr)
+library(sp)
+library(raster)
+
+library(caret) # Ajouté pour la validation croisée standard
+library(spdep) # Ajouté pour le calcul de l'indice de Moran
+source('functions.r')
+
+
+
+{r Downloading spatial data}
+zone2 <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+CS = 0.1
+grid <- st_make_grid(zone2, n = c(ceiling(diff(st_bbox(zone2)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone2)[c(2, 4)])/CS)), square = TRUE) %>%
+  as_tibble() %>%
+  mutate(ID_grid = row_number()) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone2)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+grid <- as(grid, "Spatial")
+zone <- unionSpatialPolygons(grid, rep(1, length(grid)))
+rm(zone2, CS); gc()
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+africapolitical_cropped <- st_crop(africapolitical, st_bbox(zone))
+
+
+
+{r Creating botanical richness metric}
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/tests/sp_final.xlsx")
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+filtered_RB <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 125) %>%
+  ungroup()
+
+occurrences <- RB_zone_grid %>%
+  group_by(ID_grid) %>%
+  summarise(occurrences = n()) %>%
+  ungroup()
+
+calculate_mean_threatened_species <- function(id) {
+  subset_data <- filter(filtered_RB, ID_grid == id)
+  tirages <- replicate(100, {
+    tirage <- sample_n(subset_data, 125, replace = TRUE)
+    sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+  })
+  mean(tirages)
+}
+
+final_results <- filtered_RB %>%
+  distinct(ID_grid) %>%
+  mutate(Indice = map_dbl(ID_grid, calculate_mean_threatened_species)) %>%
+  left_join(occurrences, by = "ID_grid") %>%
+  mutate(Indice = round(Indice * 100))
+rm(filtered_RB, sp_etude, RB_zone_grid); gc()
+
+
+
+{r Environmental data}
+# Load climatic data
+bio1_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif")
+bio2_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_2.tif")
+bio4_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_4.tif")
+bio7_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_7.tif")
+bio12_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_12.tif")
+bio16_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_16.tif")
+bio17_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_17.tif")
+hand_rast <- raster("D:/Mémoire_documents_supps/Rasters Internet/Merit Hydro HAND/HAND2.tif")
+CLYPPT_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/CLYPPT_africa.tif")
+SNDPPT_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/SNDPPT_africa.tif")
+BDTICM_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/BDTICM_africa.tif")
+CECSOL_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/CECSOL_africa.tif")
+SLTPPT_rast <- raster("D:/Mémoire_documents_supps/Rasters compilés/SLTPPT_africa.tif")
+
+# extract data per cell of grid
+raster_grid <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster_grid.tif")
+centroids <- rasterToPoints(raster_grid, spatial = TRUE)
+centroids_df <- data.frame(centroids@coords)
+bio1 <- extract(bio1_rast, centroids_df)
+bio2 <- extract(bio2_rast, centroids_df)
+bio4 <- extract(bio4_rast, centroids_df)
+bio7 <- extract(bio7_rast, centroids_df)
+bio12 <- extract(bio12_rast, centroids_df)
+bio16 <- extract(bio16_rast, centroids_df)
+bio17 <- extract(bio17_rast, centroids_df)
+hand <- extract(hand_rast, centroids_df)
+CLYPPT <- extract(CLYPPT_rast, centroids_df)
+SNDPPT <- extract(SNDPPT_rast, centroids_df)
+BDTICM <- extract(BDTICM_rast, centroids_df)
+CECSOL <- extract(CECSOL_rast, centroids_df)
+SLTPPT <- extract(SLTPPT_rast, centroids_df)
+
+
+
+{r Dataframe construction}
+rm(hand_rast, bio1_rast, bio2_rast, bio4_rast, bio7_rast, bio12_rast, bio16_rast, bio17_rast, CLYPPT_rast, SNDPPT_rast, BDTICM_rast, CECSOL_rast, SLTPPT_rast) ; gc()
+
+# Filtrer les carrés avec au moins 400 occurrences
+filtered_final_results <- final_results %>%
+  filter(occurrences >= 125)
+# Sélectionner les ID_grid filtrés
+filtered_ID_grids <- filtered_final_results$ID_grid
+# Créer un dataframe avec tous les ID_grid de 1 à 10962
+all_ID_grids <- 1:10962
+all_results <- data.frame(ID_grid = all_ID_grids)
+# Fusionner avec filtered_final_results pour remplir les valeurs existantes
+final_results_complete <- merge(all_results, filtered_final_results, by = "ID_grid", all.x = TRUE)
+
+# Créer un dataframe pour les données environnementales
+data <- data.frame(
+  long = centroids_df[, 1],  # Longitudes des centres des carrés
+  lat = centroids_df[, 2],   # Latitudes des centres des carrés
+  indice = final_results_complete$Indice,  # Utilisation des valeurs d'indice de final_results_complete
+  hand = hand,
+  bio1 = bio1,
+  bio2 = bio2,
+  bio4 = bio4,
+  bio7 = bio7,
+  bio12 = bio12,
+  bio16 = bio16,
+  bio17 = bio17,
+  CLYPPT = CLYPPT,
+  SNDPPT = SNDPPT,
+  BDTICM = BDTICM,
+  CECSOL = CECSOL,
+  SLTPPT = SLTPPT
+)
+
+cols_to_check <- c("SLTPPT", "CECSOL", "BDTICM", "SNDPPT", "CLYPPT", "hand", "bio1", "bio2", "bio4", "bio7", "bio12", "bio16", "bio17") # Liste des colonnes sur lesquelles vous voulez vérifier les valeurs NA
+data <- data[complete.cases(data[, cols_to_check]), ] # Filtrer les lignes en utilisant complete.cases sur les colonnes spécifiées
+newdata = data[,c(4:16)]
+
+data$long = as.numeric(data$long)
+data$lat = as.numeric(data$lat)
+data$indice = as.numeric(data$indice)
+
+# Filtrer les lignes avec un indice non NA
+data_model <- data[!is.na(data$indice),]
+
+# Définir les prédicteurs
+predictors <- c("hand", "bio1", "bio2", "bio4", "bio7", "bio12", "bio16", "bio17", "CLYPPT", "SNDPPT", "BDTICM", "CECSOL", "SLTPPT")
+
+
+
+{r Correlogram}
+correlogram = ncf::correlog(data[,"long"], data[,"lat"], data[,"indice"], na.rm=T, increment=10, resamp=0, latlon=T)
+dev.new(width=4.5, height=3)
+par(mar=c(2.2, 2.2, 1.5, 1.5))
+# Plot the correlogram
+plot(correlogram$mean.of.class[-1], correlogram$correlation[-1], ann=F, axes=F, lwd=0.2, cex=0.5, col=NA, ylim=c(-0.4, 1.0), xlim=c(0, 200))
+abline(h=0, lwd=0.5, col="red", lty=2)
+points(correlogram$mean.of.class[-1], correlogram$correlation[-1], lwd=0.2, cex=0.35, col="gray30")
+lines(correlogram$mean.of.class[-1], correlogram$correlation[-1], lwd=0.2, col="gray30")
+axis(side=1, pos=-0.4, lwd.tick=0.2, cex.axis=0.6, lwd=0.2, tck=-0.015, col.axis="gray30", mgp=c(0, -0.05, 0), at=seq(0, 500, 50))
+axis(side=2, pos=0, lwd.tick=0.2, cex.axis=0.6, lwd=0.2, tck=-0.015, col.axis="gray30", mgp=c(0, 0.18, 0), at=seq(-0.4, 1, 0.2))
+# Add axis labels
+title(xlab="distance (km)", cex.lab=0.7, mgp=c(0.3, 0, 0), col.lab="gray30")
+title(ylab="correlation", cex.lab=0.7, mgp=c(0.4, 0, 0), col.lab="gray30")
+
+
+
+{r SCV 3 - Block method}
+# Initialisation des variables nécessaires pour la modélisation
+n_simulations <- 30
+n.folds <- 5
+theRanges <- c(150, 150) * 1000  # en mètres
+
+# Créer un SpatialPointsDataFrame
+spdf <- SpatialPointsDataFrame(data_model[c("long", "lat")], data_model, proj4string = CRS("+proj=longlat +datum=WGS84"))
+
+# Préparer les structures pour stocker les résultats
+brt_models <- vector("list", n_simulations)
+predicted_indices <- matrix(NA, nrow = nrow(data), ncol = n_simulations)  # Utilisation de 'data' au lieu de 'data_model'
+
+# Boucle pour effectuer 30 modélisations BRT
+for (i in 1:n_simulations) {
+  folds_with_similar_sizes <- FALSE
+  while (!folds_with_similar_sizes) {
+    myblocks <- cv_spatial(spdf, k = n.folds, size = theRanges[1], selection = "random", progress = FALSE)
+    fold.vector4 <- myblocks$folds_ids
+    counts <- table(fold.vector4)
+    props <- counts / sum(counts)
+    if (min(props) > 0.05) {
+      folds_with_similar_sizes <- TRUE
+    }
+  }
+
+  brt_model <- gbm.step(
+    data = data_model,
+    gbm.x = predictors,
+    gbm.y = "indice",
+    tree.complexity = 5,
+    learning.rate = 0.01,
+    bag.fraction = 0.8,
+    site.weights = rep(1, nrow(data_model)),
+    var.monotone = rep(0, length(predictors)),
+    n.folds = n.folds,
+    fold.vector = fold.vector4,
+    prev.stratify = TRUE,
+    family = "poisson",
+    n.trees = 10,
+    step.size = 5,
+    max.trees = 10000,
+    tolerance.method = "auto",
+    tolerance = 0.001,
+    keep.fold.models = TRUE,
+    keep.fold.vector = TRUE,
+    keep.fold.fit = TRUE
+  )
+
+  brt_models[[i]] <- brt_model
+  predicted_indices[, i] <- predict(brt_model, newdata = data, n.trees = brt_model$gbm.call$best.trees, type = "response")
+}
+
+# Calculer la moyenne des prédictions
+data$predicted_indice_avg <- rowMeans(predicted_indices, na.rm = TRUE)
+
+
+
+{r Visualisation}
+# Visualisation des résultats moyens des 30 simulations
+ggplot() +
+  geom_tile(data = data, aes(x = long, y = lat, fill = predicted_indice_avg)) +
+  scale_fill_gradient(low = "yellow", high = "red") +
+  geom_sf(data = africapolitical_cropped, fill = NA, color = "black", size = 0.5) +
+  theme_minimal() +
+  labs(title = "Indice de Richesse Botanique Prédit (Moyenne des 30 BRT)", x = "Longitude", y = "Latitude", fill = "Indice")
+
+
+ChatGPT
+
+Pour obtenir l'impact moyen de chaque variable (couche) sur les 30 modélisations BRT (Boosted Regression Trees), nous allons calculer l'importance relative des variables pour chaque modèle et ensuite prendre la moyenne de ces importances à travers tous les modèles.
+
+Voici comment vous pouvez procéder :
+
+    Ajouter une fonction pour extraire l'importance des variables : Nous allons écrire une fonction pour extraire l'importance relative des variables pour chaque modèle.
+    Calculer l'importance des variables pour chaque modèle : Nous allons utiliser cette fonction pour chaque modèle BRT.
+    Calculer la moyenne des importances : Enfin, nous allons calculer la moyenne de l'importance des variables sur tous les modèles.
+
+Voici le code mis à jour :
+
+r
+
+# Fonction pour extraire l'importance relative des variables
+get_variable_importance <- function(brt_model) {
+  importance <- summary(brt_model, plot = FALSE)
+  return(importance$rel.inf)
+}
+
+# Calculer l'importance des variables pour chaque modèle
+variable_importances <- matrix(NA, nrow = n_simulations, ncol = length(predictors))
+colnames(variable_importances) <- predictors
+
+for (i in 1:n_simulations) {
+  variable_importances[i, ] <- get_variable_importance(brt_models[[i]])
+}
+
+# Calculer la moyenne des importances des variables sur tous les modèles
+mean_importances <- colMeans(variable_importances, na.rm = TRUE)
+
+# Afficher les importances moyennes des variables
+mean_importances_df <- data.frame(Variable = names(mean_importances), Importance = mean_importances)
+print(mean_importances_df)
+
+# Visualisation des importances moyennes des variables
+ggplot(mean_importances_df, aes(x = reorder(Variable, -Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Importance Moyenne des Variables sur 30 Modélisations BRT", x = "Variable", y = "Importance Moyenne")
+
+Explications :
+
+    get_variable_importance : Cette fonction extrait l'importance relative des variables pour un modèle BRT donné en utilisant la fonction summary de gbm.
+    variable_importances : Nous créons une matrice pour stocker les importances des variables pour chaque modèle.
+    Boucle for : Pour chaque modèle BRT, nous extrayons les importances des variables et les stockons dans la matrice variable_importances.
+    mean_importances : Nous calculons la moyenne des importances des variables à travers tous les modèles.
+    mean_importances_df : Nous convertissons les importances moyennes en un dataframe pour faciliter l'affichage.
+    ggplot : Nous visualisons les importances moyennes des variables en utilisant un graphique à barres.
+
+Ce code vous donnera une compréhension claire de l'importance relative moyenne de chaque couche environnementale utilisée dans vos modélisations BRT.
+Cela donne une belle image, est-ce possible de la mettre sous forme de camembert?
+ChatGPT
+
+Oui, vous pouvez visualiser les importances moyennes des variables sous forme de camembert (pie chart) en utilisant ggplot2. Voici comment vous pouvez le faire :
+
+    Installer et charger le package ggplot2 : Assurez-vous que ggplot2 est installé et chargé.
+    Convertir les importances moyennes en proportions : Convertir les importances en proportions pour qu'elles puissent être représentées sous forme de camembert.
+    Créer le camembert : Utiliser geom_bar et coord_polar pour créer le camembert.
+
+Voici le code pour le faire :
+
+r
+
+library(ggplot2)
+
+# Calculer les importances moyennes des variables
+mean_importances_df <- data.frame(Variable = names(mean_importances), Importance = mean_importances)
+
+# Convertir les importances en proportions
+mean_importances_df <- mean_importances_df %>%
+  mutate(Percentage = Importance / sum(Importance) * 100)
+
+# Créer le camembert
+ggplot(mean_importances_df, aes(x = "", y = Percentage, fill = Variable)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs(title = "Importance Moyenne des Variables sur 30 Modélisations BRT") +
+  theme(legend.title = element_blank())
+
+Explications :
+
+    mean_importances_df : Nous créons un dataframe contenant les importances moyennes des variables et les convertissons en pourcentages.
+    geom_bar : Nous utilisons geom_bar pour créer un graphique à barres où chaque barre représente une variable.
+    coord_polar : Nous convertissons le graphique à barres en camembert en utilisant coord_polar avec l'argument theta = "y".
+    theme_void : Nous utilisons theme_void pour supprimer les axes et le fond, afin que le graphique ressemble à un camembert.
+    theme(legend.title = element_blank()) : Nous supprimons le titre de la légende pour rendre le graphique plus propre.
+
+Ce code vous permettra de visualiser les importances moyennes des variables sous forme de camembert.

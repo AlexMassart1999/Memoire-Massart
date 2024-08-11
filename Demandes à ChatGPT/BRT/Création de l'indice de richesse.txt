@@ -1,0 +1,202 @@
+https://chatgpt.com/share/cf4cafac-d164-45af-bcbb-59b5951327f3
+
+
+
+Voici le début de mon code sur R : sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx") #on prend toutes les sp menacees, meme les arbres
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+# Data des sp etudiees
+RB_sp <- RB_zone_grid %>%
+  filter(tax_sp_level %in% sp_etude$Taxon) %>%  #uniquement sp etudiees
+  mutate(geometry = gsub("\\(|\\)", "", geometry)) %>% #long et lat a partir de geometry
+  separate(geometry, into = c("longitude", "latitude"), sep = ",") %>%
+  mutate(
+    longitude = as.numeric(sub("c", "", longitude)),
+    latitude = as.numeric(latitude)
+  )
+
+Mon objectif est d'avoir un dataframe ayant une colonne avec les ID_grid voulus et une colonne avec l'indice qu'on va calculer.
+Les ID_grid qui vont être gardés sont les numéros de la colonne 'ID_grid' de RB_sp' qui apparaissent au minimum 10 fois. 
+Ensuite, pour chaque numéro d''ID_grid' pris en compte, il faudrait effectuer un tirage aléatoire de 10 lignes de 'RB_sp' (qui ont le bon numéro) et répliquer ce tirage 100 fois, avec remise. Pour chaque tirage de chaque numéro, on calcule le nombre de fois que les valeurs de la colonne 'tax_sp_level' apparaissent dans la colonne 'Espèces menacées prises en compte' de 'sp_etude'. On va ensuite faire la moyenne de ce calcul pour les 100 tirage pour chaque numéro. Ce seront ces moyennes qui vont être mises dans la colonne de l'indice.
+ChatGPT
+
+Pour atteindre vos objectifs, nous allons suivre une série d'étapes dans R afin de manipuler les données et effectuer les calculs nécessaires. Voici une proposition de script pour accomplir cela :
+
+    Charger les données.
+    Filtrer les ID_grid qui apparaissent au moins 10 fois.
+    Effectuer les tirages aléatoires avec remise et calculer les moyennes des occurrences.
+
+Voici le code complet :
+
+r
+
+# Charger les bibliothèques nécessaires
+library(readxl)
+library(dplyr)
+library(tidyr)
+
+# Charger les données
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx")
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Filtrer les espèces étudiées et extraire longitude et latitude
+RB_sp <- RB_zone_grid %>%
+  filter(tax_sp_level %in% sp_etude$Taxon) %>%
+  mutate(geometry = gsub("\\(|\\)", "", geometry)) %>%
+  separate(geometry, into = c("longitude", "latitude"), sep = ",") %>%
+  mutate(
+    longitude = as.numeric(sub("c", "", longitude)),
+    latitude = as.numeric(latitude)
+  )
+
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB_sp <- RB_sp %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+
+# Initialiser une liste pour stocker les résultats
+results <- list()
+
+# Boucle sur chaque ID_grid filtré
+for (id in unique(filtered_RB_sp$ID_grid)) {
+  # Filtrer les lignes pour cet ID_grid
+  subset_data <- filtered_RB_sp %>%
+    filter(ID_grid == id)
+  
+  # Initialiser une liste pour stocker les moyennes de chaque tirage
+  tirage_means <- numeric(100)
+  
+  # Effectuer 100 tirages
+  for (i in 1:100) {
+    tirage <- subset_data %>%
+      sample_n(10, replace = TRUE)  # Tirage aléatoire de 10 lignes avec remise
+    
+    # Calculer le nombre d'espèces menacées dans ce tirage
+    count_threatened_species <- sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+    
+    # Stocker le résultat
+    tirage_means[i] <- count_threatened_species
+  }
+  
+  # Calculer la moyenne des 100 tirages pour cet ID_grid
+  mean_threatened_species <- mean(tirage_means)
+  
+  # Ajouter le résultat à la liste
+  results[[as.character(id)]] <- mean_threatened_species
+}
+
+# Convertir la liste des résultats en data frame
+final_results <- data.frame(
+  ID_grid = as.numeric(names(results)),
+  Indice = unlist(results)
+)
+
+# Afficher les résultats
+print(final_results)
+
+Ce script suit les étapes suivantes :
+
+    Charge les données et filtre les espèces étudiées.
+    Filtre les ID_grid apparaissant au moins 10 fois.
+    Pour chaque ID_grid filtré, effectue 100 tirages aléatoires de 10 lignes, avec remise, et calcule le nombre d'espèces menacées présentes.
+    Stocke la moyenne de ces calculs pour chaque ID_grid.
+
+Le résultat final est un data frame final_results contenant les ID_grid et leurs indices calculés.
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB_sp <- RB_sp %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+Ceci ne me donne 0 observations de 129 variables, ce n'est pas normal
+ChatGPT
+
+Il semble que le filtrage des ID_grid qui apparaissent au moins 10 fois n'ait pas produit les résultats escomptés. Cela peut être dû à plusieurs raisons, notamment des erreurs de formatage ou des valeurs inattendues dans vos données. Voici quelques étapes pour diagnostiquer et corriger ce problème :
+
+    Vérifier les données : Assurez-vous que les colonnes ID_grid et tax_sp_level contiennent les valeurs attendues.
+    Diagnostiquer le filtrage : Vérifiez combien de fois chaque ID_grid apparaît avant de filtrer.
+    Corriger le filtrage : Utilisez count() pour comprendre la distribution des ID_grid.
+
+Voici un code mis à jour pour diagnostiquer et corriger le problème :
+
+r
+
+# Charger les bibliothèques nécessaires
+library(readxl)
+library(dplyr)
+library(tidyr)
+
+# Charger les données
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx")
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Filtrer les espèces étudiées et extraire longitude et latitude
+RB_sp <- RB_zone_grid %>%
+  filter(tax_sp_level %in% sp_etude$Taxon) %>%
+  mutate(geometry = gsub("\\(|\\)", "", geometry)) %>%
+  separate(geometry, into = c("longitude", "latitude"), sep = ",") %>%
+  mutate(
+    longitude = as.numeric(sub("c", "", longitude)),
+    latitude = as.numeric(latitude)
+  )
+
+# Diagnostiquer le nombre d'occurrences de chaque ID_grid
+id_grid_counts <- RB_sp %>%
+  group_by(ID_grid) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count))
+
+# Afficher les 10 premiers ID_grid avec leurs comptes
+print(head(id_grid_counts, 10))
+
+# Filtrer les ID_grid apparaissant au moins 10 fois
+filtered_RB_sp <- RB_sp %>%
+  group_by(ID_grid) %>%
+  filter(n() >= 10) %>%
+  ungroup()
+
+# Vérifier si le filtrage a produit des données
+if(nrow(filtered_RB_sp) == 0) {
+  stop("Le filtrage n'a produit aucune observation. Vérifiez les valeurs dans la colonne ID_grid.")
+}
+
+# Initialiser une liste pour stocker les résultats
+results <- list()
+
+# Boucle sur chaque ID_grid filtré
+for (id in unique(filtered_RB_sp$ID_grid)) {
+  # Filtrer les lignes pour cet ID_grid
+  subset_data <- filtered_RB_sp %>%
+    filter(ID_grid == id)
+  
+  # Initialiser une liste pour stocker les moyennes de chaque tirage
+  tirage_means <- numeric(100)
+  
+  # Effectuer 100 tirages
+  for (i in 1:100) {
+    tirage <- subset_data %>%
+      sample_n(10, replace = TRUE)  # Tirage aléatoire de 10 lignes avec remise
+    
+    # Calculer le nombre d'espèces menacées dans ce tirage
+    count_threatened_species <- sum(tirage$tax_sp_level %in% sp_etude$`Espèces menacées prises en compte`)
+    
+    # Stocker le résultat
+    tirage_means[i] <- count_threatened_species
+  }
+  
+  # Calculer la moyenne des 100 tirages pour cet ID_grid
+  mean_threatened_species <- mean(tirage_means)
+  
+  # Ajouter le résultat à la liste
+  results[[as.character(id)]] <- mean_threatened_species
+}
+
+# Convertir la liste des résultats en data frame
+final_results <- data.frame(
+  ID_grid = as.numeric(names(results)),
+  Indice = unlist(results)
+)
+
+# Afficher les résultats
+print(final_results)
+
+Ce script ajoute une étape de diagnostic avant le filtrage pour afficher les ID_grid et leurs comptes. Cela vous aidera à comprendre si les valeurs dans la colonne ID_grid sont comme attendu. Si le filtrage ne produit aucune observation, le script s'arrêtera avec un message d'erreur pour que vous puissiez examiner les données avant de continuer.

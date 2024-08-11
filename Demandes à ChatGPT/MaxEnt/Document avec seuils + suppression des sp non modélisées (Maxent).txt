@@ -1,0 +1,368 @@
+https://chat.openai.com/share/2a8972cc-49f4-4759-92e5-18e2ecf1592d
+https://chat.openai.com/share/fd460290-7b8b-41cb-a122-529448002d83
+https://chatgpt.com/share/35269792-a315-4554-921b-dc5f6fbe7e95
+
+
+ChatGPT 3.5
+User
+Bonjour Chat, j'aimerais créer un code R qui me permettrait de construire un dataframe, appelé 'seuils' qui aurait 2 colonnes : 'species' et 'seuil'. Pour cela j'aimerais aller dans le dossier qui a cette adresse : C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output_test. Dedans, les fichiers intéressants sont au format csv et sont de la forme suivant "nom1_"nom2"_samplePredictions. Il faudrait utiliser nom1 nom2 pour la colonne 'species' de 'seuils' et ensuite prendre la plus petite valeur de la 6e colonne du csv pour remplir la colonne 'seuil' de 'seuils'
+ChatGPT
+
+D'accord, voici un exemple de code R qui pourrait accomplir ce que vous avez décrit :
+
+R
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+
+# Chemin vers le dossier
+dossier <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_test"
+
+# Lister les fichiers CSV dans le dossier
+fichiers_csv <- list.files(path = dossier, pattern = "\\.csv$", full.names = TRUE)
+
+# Fonction pour extraire les noms des espèces des noms de fichiers
+extraire_noms_especes <- function(chemin) {
+  noms <- str_extract(chemin, "(?<=nom1_).*?(?=_samplePredictions)")
+  return(noms)
+}
+
+# Lire les fichiers CSV et extraire les seuils
+extraire_seuils <- function(chemin) {
+  data <- read_csv(chemin)
+  seuil <- min(data[[6]])
+  return(seuil)
+}
+
+# Extraire les noms des espèces
+noms_especes <- map_chr(fichiers_csv, extraire_noms_especes)
+
+# Extraire les seuils
+seuils <- map_dbl(fichiers_csv, extraire_seuils)
+
+# Créer le dataframe 'seuils'
+seuils <- data.frame(species = noms_especes, seuil = seuils)
+
+# Afficher le dataframe 'seuils'
+print(seuils)
+
+Ce script utilise les packages readr, dplyr, tidyr, stringr, et purrr pour lire les fichiers CSV, extraire les noms des espèces à partir des noms de fichiers, extraire les seuils à partir des données CSV, puis créer le dataframe 'seuils' avec deux colonnes : 'species' et 'seuil'. Assurez-vous d'avoir installé ces packages au préalable si ce n'est pas déjà fait (install.packages("nom_du_package")).
+User
+Erreur dans map_dbl(fichiers_csv, extraire_seuils) : 
+Caused by error in `data[[6]]`:
+! Can't extract columns past the end.
+ℹ Location 6 doesn't exist.
+ℹ There are only 3 columns.
+ChatGPT
+
+Il semble y avoir une erreur dans l'extraction des seuils à partir des fichiers CSV. Cela peut arriver si le format des fichiers CSV ne correspond pas à ce qui est attendu. Il est possible que les fichiers CSV ne contiennent pas les données exactes que nous prévoyons.
+
+Pour résoudre ce problème, nous devons nous assurer que les fichiers CSV sont lus correctement et que les données sont extraites correctement. Pouvez-vous fournir un exemple de contenu d'un fichier CSV afin que je puisse mieux comprendre sa structure et ajuster le code en conséquence ?
+User
+Rows: 361 Columns: 6
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+dbl (6): Raw value, Corresponding cumulative value, Corresponding Logistic v...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+Rows: 14 Columns: 3
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (1): Predictor variable
+dbl (1): Sample average
+lgl (1): Categorical
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+Error in `map_dbl()`:
+ℹ In index: 2.
+Caused by error in `data[[6]]`:
+! Can't extract columns past the end.
+ℹ Location 6 doesn't exist.
+ℹ There are only 3 columns.
+Backtrace:
+ 1. purrr::map_dbl(fichiers_csv, extraire_seuils)
+ 2. purrr:::map_("double", .x, .f, ..., .progress = .progress)
+ 6. global .f(.x[[i]], ...)
+ 8. tibble:::`[[.tbl_df`(data, 6)
+Erreur dans map_dbl(fichiers_csv, extraire_seuils) : 
+Caused by error in `data[[6]]`:
+! Can't extract columns past the end.
+ℹ Location 6 doesn't exist.
+ℹ There are only 3 columns.
+ChatGPT
+
+Il semble que les fichiers CSV contiennent seulement 3 colonnes au lieu de 6 comme nous l'avions supposé. Cela explique pourquoi nous obtenons une erreur lors de la tentative d'extraction de la 6e colonne.
+
+Modifions le code pour tenir compte de cette nouvelle information :
+
+R
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+
+# Chemin vers le dossier
+dossier <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_test"
+
+# Lister les fichiers CSV dans le dossier
+fichiers_csv <- list.files(path = dossier, pattern = "\\.csv$", full.names = TRUE)
+
+# Fonction pour extraire les noms des espèces des noms de fichiers
+extraire_noms_especes <- function(chemin) {
+  noms <- str_extract(chemin, "(?<=nom1_).*?(?=_samplePredictions)")
+  return(noms)
+}
+
+# Lire les fichiers CSV et extraire les seuils
+extraire_seuils <- function(chemin) {
+  data <- read_csv(chemin)
+  seuil <- min(data$`Sample average`)
+  return(seuil)
+}
+
+# Extraire les noms des espèces
+noms_especes <- map_chr(fichiers_csv, extraire_noms_especes)
+
+# Extraire les seuils
+seuils <- map_dbl(fichiers_csv, extraire_seuils)
+
+# Créer le dataframe 'seuils'
+seuils <- data.frame(species = noms_especes, seuil = seuils)
+
+# Afficher le dataframe 'seuils'
+print(seuils)
+
+Cette fois-ci, nous extrayons la colonne "Sample average" au lieu de la 6e colonne pour obtenir les seuils, car elle semble contenir les valeurs dont nous avons besoin. Assurez-vous que cela correspond à ce que vous attendez dans vos fichiers CSV.
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+J'ai 271 couches rasters représentant la suitabilité écologique (ayant des valeurs entre 0 et 1) pour 271 espèces de plantes africaine. J'ai également un fichier csv comprenant pour chaque espèce le seuil intéressant. J'aimerais remplacer les valeurs de ces couches raster par 0 quand elles sont en dessous du seuil correspondant à l'espèce et par 1 quand elles sont égales ou au-dessus du seuil. Les couches rasters sont les dichiers .asc qui se situent à cet endroit : C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output_final. Et le csv est à cet endroit : C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\seuils.csv
+ChatGPT
+
+Pour réaliser cette tâche, vous pouvez utiliser R avec les packages appropriés pour manipuler les couches raster et les données CSV. Voici un exemple de script R qui pourrait vous aider :
+
+R
+
+# Charger les packages nécessaires
+install.packages("raster")
+install.packages("dplyr")
+
+library(raster)
+library(dplyr)
+
+# Définir le chemin vers les fichiers
+chemin_rasters <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/output_final"
+chemin_csv <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/seuils.csv"
+
+# Charger les noms de fichiers raster
+noms_rasters <- list.files(chemin_rasters, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger les seuils à partir du fichier CSV
+seuils <- read.csv(chemin_csv)
+
+# Fonction pour remplacer les valeurs dans un raster en fonction du seuil
+remplacer_valeurs <- function(raster, seuil) {
+  raster[raster < seuil] <- 0
+  raster[raster >= seuil] <- 1
+  return(raster)
+}
+
+# Parcourir chaque raster
+for (i in seq_along(noms_rasters)) {
+  # Charger le raster
+  raster_data <- raster(noms_rasters[i])
+  
+  # Obtenir le nom de l'espèce à partir du nom du fichier raster
+  nom_espece <- tools::file_path_sans_ext(basename(noms_rasters[i]))
+  
+  # Trouver le seuil correspondant à cette espèce
+  seuil_espece <- seuils$Seuil[seuils$Espece == nom_espece]
+  
+  # Vérifier si le seuil a été trouvé
+  if (length(seuil_espece) == 0) {
+    cat("Aucun seuil trouvé pour l'espèce:", nom_espece, "\n")
+  } else {
+    # Remplacer les valeurs dans le raster
+    raster_data_modifie <- remplacer_valeurs(raster_data, seuil_espece)
+    
+    # Sauvegarder le raster modifié
+    writeRaster(raster_data_modifie, file = paste0(noms_rasters[i], "_modifie.asc"), format = "ascii")
+    
+    cat("Raster modifié pour l'espèce:", nom_espece, "\n")
+  }
+}
+
+Assurez-vous d'avoir installé les packages raster et dplyr en exécutant install.packages("raster") et install.packages("dplyr") si vous ne les avez pas déjà installés. Ensuite, vous pouvez copier et coller ce script dans votre environnement R pour l'exécuter. Assurez-vous de remplacer les chemins d'accès par ceux de votre système. Ce script parcourt chaque raster, trouve le seuil correspondant à l'espèce à partir du fichier CSV, puis remplace les valeurs dans le raster en fonction de ce seuil.
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+Bonjour chat, j'aimerais que tu me fasses des lignes de code R. Il faudrait télécharger le fichier 'resultats' par le chemin : C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\seuils_bon.csv . J'aimerais que tu me sortes sous forme d'excel, les différentes espèces dans la 1ere colonne qui ont une valeur exacte de 0,5 dans la 2e colonne. Ces espèces que tu vas sortir, il faudra remplacer le "_" par un " ".
+ChatGPT
+
+Bien sûr, je peux vous aider à écrire un script en R pour accomplir cela. Voici le script qui fait ce que vous demandez :
+
+    Télécharge le fichier CSV.
+    Filtre les espèces ayant une valeur de 0,5 dans la deuxième colonne.
+    Remplace les underscores "_" par des espaces " ".
+    Sauvegarde le résultat dans un fichier Excel.
+
+r
+
+# Charger les bibliothèques nécessaires
+library(readr)
+library(dplyr)
+library(openxlsx)
+
+# Définir le chemin du fichier
+file_path <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\seuils_bon.csv"
+
+# Lire le fichier CSV
+data <- read_csv(file_path)
+
+# Filtrer les espèces ayant une valeur de 0,5 dans la deuxième colonne
+filtered_data <- data %>%
+  filter(`NomDeLaDeuxiemeColonne` == 0.5) %>%  # Remplacez `NomDeLaDeuxiemeColonne` par le nom réel de la deuxième colonne
+  mutate(Species = gsub("_", " ", Species))   # Remplacez `Species` par le nom réel de la colonne des espèces
+
+# Sauvegarder le résultat dans un fichier Excel
+write.xlsx(filtered_data, "filtered_species.xlsx", rowNames = FALSE)
+
+# Afficher un message de confirmation
+cat("Le fichier Excel a été créé avec succès sous le nom 'filtered_species.xlsx'.\n")
+
+Notez que vous devez remplacer NomDeLaDeuxiemeColonne par le nom réel de la deuxième colonne dans votre fichier CSV et Species par le nom de la colonne contenant les noms des espèces. Si vous n'êtes pas sûr des noms des colonnes, vous pouvez les vérifier en lisant les premières lignes du fichier avec la commande head(data) après avoir lu le fichier CSV.
+
+Voici comment faire pour vérifier les noms des colonnes :
+
+r
+
+# Lire le fichier CSV
+data <- read_csv(file_path)
+
+# Afficher les premières lignes pour vérifier les noms des colonnes
+head(data)
+
+Assurez-vous également d'avoir les bibliothèques readr, dplyr et openxlsx installées. Vous pouvez les installer avec les commandes suivantes si elles ne sont pas déjà installées :
+
+r
+
+install.packages("readr")
+install.packages("dplyr")
+install.packages("openxlsx")
+
+N'hésitez pas à me dire si vous avez besoin d'autres modifications ou d'aide supplémentaire !
+
+resultats <- read_csv("C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\seuils_bon.csv")
+filtered_data <- resultats %>%
+filter(Seuil_minimal == 0.5)
+mutate(Fichier = gsub("_", " ", Fichier))
+
+#write.xlsx(filtered_data, "filtered_species.xlsx").
+
+Voici le code modifié, j'aimerais maintenant enlever tous les fichiers qui commencent par une des cases présente dans la colonne 'Fichier' de 'filtered_data' et qui sont présent dans les dossiers suivants : C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output et C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\output\plots
+ChatGPT
+
+Pour accomplir cela, vous pouvez utiliser le script R suivant. Il lit le fichier CSV, filtre les données selon la valeur de 0,5 dans la colonne Seuil_minimal, et supprime tous les fichiers dans les répertoires spécifiés dont le nom commence par une des valeurs présentes dans la colonne Fichier de filtered_data.
+
+Voici le script complet :
+
+r
+
+# Charger les bibliothèques nécessaires
+library(readr)
+library(dplyr)
+library(stringr)
+
+# Définir le chemin du fichier
+file_path <- "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\seuils_bon.csv"
+
+# Lire le fichier CSV
+resultats <- read_csv(file_path)
+
+# Filtrer les espèces ayant une valeur de 0,5 dans la colonne Seuil_minimal
+filtered_data <- resultats %>%
+  filter(Seuil_minimal == 0.5)
+
+# Obtenir les noms des fichiers à supprimer
+files_to_delete <- filtered_data$Fichier
+
+# Définir les répertoires
+directories <- c(
+  "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output",
+  "C:\\Users\\Alex Massart\\OneDrive - Université Libre de Bruxelles\\Documents\\ULB\\2023-2024\\Mémoire\\R script\\MaxEnt\\output\\plots"
+)
+
+# Fonction pour supprimer les fichiers qui commencent par une des valeurs dans files_to_delete
+delete_matching_files <- function(directory, patterns) {
+  # Lister les fichiers dans le répertoire
+  files <- list.files(directory, full.names = TRUE)
+  
+  # Parcourir les fichiers et supprimer ceux qui correspondent à un des patterns
+  for (file in files) {
+    for (pattern in patterns) {
+      if (str_starts(basename(file), pattern)) {
+        file.remove(file)
+      }
+    }
+  }
+}
+
+# Supprimer les fichiers correspondants dans chaque répertoire
+for (dir in directories) {
+  delete_matching_files(dir, files_to_delete)
+}
+
+# Afficher un message de confirmation
+cat("Les fichiers correspondants ont été supprimés avec succès.\n")
+
+Explication du code :
+
+    Chargement des bibliothèques nécessaires :
+        readr pour lire le fichier CSV.
+        dplyr pour manipuler les données.
+        stringr pour les opérations sur les chaînes de caractères.
+
+    Lire le fichier CSV et filtrer les données :
+        Le fichier est lu depuis le chemin spécifié.
+        Les lignes avec une valeur de 0,5 dans la colonne Seuil_minimal sont filtrées.
+
+    Obtenir les noms des fichiers à supprimer :
+        Les noms des fichiers à supprimer sont extraits de la colonne Fichier.
+
+    Définir les répertoires :
+        Les répertoires où chercher les fichiers à supprimer sont spécifiés dans un vecteur.
+
+    Fonction pour supprimer les fichiers correspondants :
+        delete_matching_files liste les fichiers dans le répertoire spécifié et supprime ceux qui commencent par un des patterns dans files_to_delete.
+
+    Supprimer les fichiers correspondants dans chaque répertoire :
+        La fonction delete_matching_files est appelée pour chaque répertoire spécifié.
+
+    Afficher un message de confirmation :
+        Un message est affiché pour indiquer que les fichiers ont été supprimés avec succès.
+
+Ce script devrait accomplir les tâches que vous avez décrites. N'hésitez pas à me dire si vous avez besoin d'autres modifications ou d'aide supplémentaire !

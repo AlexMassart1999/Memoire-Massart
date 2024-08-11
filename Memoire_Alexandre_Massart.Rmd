@@ -1,0 +1,611 @@
+---
+title: "Memoire Alexandre Massart"
+author: "Massart"
+date: "14/02/2024"
+---
+
+# Load packages et options
+```{r load-packages, include=FALSE}
+#### Telechargement des packages necessaires pour la suite du code
+options(java.parameters = "-Xmx12288m") #pour transformer de gros dataframe en excel (parfois necessaire d'avoir recours a d'autres strategies)
+library(rJava)
+library(tidyverse)
+library(sf)
+library(ggplot2)
+library(xlsx)  # Excel
+library(readxl)
+library(rredlist) # RL
+library(ade4)  # ACP
+library(raster)
+library(knitr)
+library(dplyr)
+library(exactextractr)
+library(terra)
+library(tmap)
+library(rgdal)
+library(rasterVis)
+knitr::opts_chunk$set(echo = T,
+                      results = "hide") #masque les output du code (avec le include=false)
+```
+
+# Création base de données
+```{r Chargement des bases de donnees, include=FALSE}
+#### Telechargement de la base de donnees avec toutes les occurences
+RB <- read_csv("Base de données/RB_full_fev_2024_Tropicos.csv", col_types = 
+              list(dety = col_character(), #les colonnes seront lues comme caracteres
+                   coly = col_character(),
+                   colm = col_character(),
+                   cold = col_character(),
+                   alt = col_character(),
+                   idtax_good_n = col_double(),
+                   id_trait_measures_growth_form_level_1_2 = col_character(),
+                   id_trait_measures_growth_form_level_1_2_1 = col_character(),
+                   id_trait_measures_growth_form_level_1_1_2 = col_character(),
+                   traitvalue_char_growth_form_level_1_1_2 = col_character(),
+                   basisofrecord_growth_form_level_1_1_2 = col_character(),
+                   author3 = col_character(),
+                   tax_rank02 = col_character(),
+                   tax_nam02 = col_character()
+                   ))
+
+#### Telechargement de la base de données POG
+POG <- read_excel("Base de données/BDD_POG02072024.xlsm") #prendre la nouvelle
+```
+
+```{r Base avec uniquement occurrences du Gabon (et noms accepted), include=FALSE}
+RB_POG <- RB %>%  
+  filter(tax_infra_level %in% POG$taxon) %>%  #uniquement les espèces qui sont dans POG
+  left_join(., POG %>% dplyr::select(taxon, taxon_key, acceptedTaxonKey, accepetedTaxonName, taxonomicStatus, RemarkTaxonomique), by = c("tax_infra_level" = "taxon"), multiple = "all") %>% #on insere a la suite de RB ces colonnes de POG
+  mutate(Taxon_final = case_when(is.na(acceptedTaxonKey) ~ tax_infra_level,!is.na(accepetedTaxonName) ~ accepetedTaxonName, is.na(accepetedTaxonName) ~ tax_infra_level)) %>% #nouvelle colonne avec les noms accepted ou ceux deja presents
+  dplyr::select(Taxon_final, tax_infra_level, taxon_key, accepetedTaxonName, acceptedTaxonKey, taxonomicStatus, RemarkTaxonomique, everything()) %>% #colonnes mises au debut
+  arrange(Taxon_final)
+
+sp <- as_tibble(unique(RB_POG$Taxon_final)) #calcul du nombre d'especes differentes
+```
+
+```{r Occurrences pour une espece precise, include=FALSE}
+a <- RB[RB$tax_sp_level == "Mapania chevalieri" & !is.na(RB$tax_infra_level),] #montre toutes les collections de l'espece
+#write_csv(a, "a.csv")
+```
+
+```{r Ajout des occurrences de Tropicos, include=FALSE}
+# Permet de rajouter des occurrences à RB, fait avec l'aide chatGPT
+Collection_Tropicos <- read_excel("Base de données/Collection_Tropicos.xlsx")
+  transform_dates <- function(df) {  #fonction qui transforme la colonne date en 3 colonnes     
+    df$Date <- as.Date(df$Date, format = "%d %B %Y")
+    df$coly <- as.numeric(format(df$Date, "%Y"))
+    df$colm <- as.numeric(format(df$Date, "%m"))
+    df$cold <- as.numeric(format(df$Date, "%d")) 
+    df <- df %>% select(-Date)  # Supprimer la colonne Date originale
+    return(df)
+  }
+Collection_Tropicos <- transform_dates(Collection_Tropicos)  #appliquer la fonction
+
+missing_cols <- setdiff(names(RB), names(Collection_Tropicos))
+for (col in missing_cols) { # Trouve colonnes manquantes de Tropicos par rapport à RB
+  Collection_Tropicos[[col]] <- NA
+}
+extra_cols <- setdiff(names(Collection_Tropicos), names(RB))  #trouve colonnes manquantes de RB pour Collections_Tropicos
+Collection_Tropicos <- Collection_Tropicos[, !names(Collection_Tropicos) %in% extra_cols]
+RB_new <- rbind(RB, Collection_Tropicos)  #ajoute Collections_Tropicos à RB en créant RB_new
+#write_csv(RB_new, "RB_full_fev_2024_Tropicos.csv")
+```
+
+```{r Liste finale des especes, include=FALSE}
+RB_new <- read_csv("Base de données/RB_full_fev_2024_Tropicos.csv")
+Sp_men <- read_excel("Base de données/Sp_CR_EN_VUD2.xlsx")
+RB_Menacees <- RB_new[RB_new$tax_sp_level %in% Sp_men$tax,]
+#write_csv(RB_Menacees, "RB_sp_menacées.csv")
+
+#Permet de trouver les especes menacees qui ont des occurrences hors de la zone initiale
+sp_hors_zone <- subset(RB_Menacees, !(ddlat >= -10.13 & ddlat <= 10.5 & ddlon >= 2.18 & ddlon <= 26.44)) %>% #enleve toutes les especes qui sont dans la zone initiale d'etude
+  dplyr::select(tax_sp_level)
+sp_hors_zone <- unique(sp_hors_zone) #obtient uniquement les especes menacees avec des occ hors zone
+RB_hors_zone <- RB_Menacees[RB_Menacees$tax_sp_level %in% sp_hors_zone$tax_sp_level,]
+#write_csv(RB_hors_zone, "RB_hors_zone.csv")
+
+# Cree un fichier avec les especes qui sont gardees
+RB_final <- read_csv("RB_final.csv")
+sp_final <- RB_final %>%
+  dplyr::select(tax_sp_level)
+sp_final <- unique(sp_final)
+#xlsx::write.xlsx(as.data.frame(sp_final), "sp_final.xlsx", sheetName = "Sheet1", col.names = TRUE, row.names = FALSE, showNA = FALSE)
+```
+
+
+# Modification avec ConApp
+```{r Preparation du jeu de donnees pour ConApp, include=FALSE}
+RB_POG_sp <- RB_POG %>%
+  filter(Taxon_final%in% sp$value[2501:4000]) %>% #prend les occurrences de x especes
+  dplyr::select(ddlat, ddlon, Taxon_final) %>% #choix des colonnes importante pour limiter la taille
+  rename(., "tax_sp_level" = "Taxon_final") #meilleure lecture pour ConApp
+
+#write_csv(RB_POG_sp, "RB_POG(2501-4000).csv")
+```
+
+```{r Verifications des taxons pris en compte, include=FALSE}
+Sp_verif <- POG %>% #verification des taxons de POG non present dans RB
+  filter(!(Taxon %in% RB_POG$Taxon_final)) %>% 
+  dplyr::select(Taxon, accepetedTaxonName, taxonomicStatus, Pres_Gabon, Remak_Pres_Gabon) %>%
+  filter(taxonomicStatus == "ACCEPTED")
+
+# Il faut d'abord faire le chunk 9 (le suivant) !
+Sp_pres_Gabon <- POG_New %>% #verification presence des taxons au Gabon
+  filter(Taxon %in% RB_POG$Taxon_final) %>%
+  dplyr::select(Taxon, accepetedTaxonName, taxonomicStatus, Pres_Gabon, Remak_Pres_Gabon, Statut_Biogeo_Gabon) %>%
+  filter(taxonomicStatus == "ACCEPTED", Pres_Gabon == "1" | is.na(Pres_Gabon) | Pres_Gabon == "2", Statut_Biogeo_Gabon == "P" | Statut_Biogeo_Gabon == "E" | Statut_Biogeo_Gabon == "S" | is.na(Statut_Biogeo_Gabon)) #prend en compte que les sp presentes au Gabon et noms acceptes
+```
+
+```{r Mettre a jour les evaluations ConR dans POG, include=FALSE}
+New_analysis <- read_csv("ConR Analysis/ConR_all_species.csv") %>% #utilisation des datas de ConR faites precedemment
+  rename(., "Taxon" = "taxa") %>%
+  dplyr::select(-c(issue_aoo:issue_locations)) #les issues ne sont pas necessaires
+
+colnames(New_analysis)[2:15] <- paste(colnames(New_analysis)[2:15], "ConApp", sep = "_") #renommer les colonnes pour POG
+
+POG_New <- POG %>%   #ajout analyses ConR dans POG a la place des precedentes
+  left_join(., New_analysis, by = "Taxon") %>%
+  relocate(., EOO_ConApp:range_restricted_ConApp, .after = robustness_index_ConR) %>%
+  dplyr::select(-c(Nbe_loc_ConR_NT:robustness_index_ConR)) %>%
+  add_column(robustness_index_ConApp = NA) %>%
+  relocate(., robustness_index_ConApp, .after = range_restricted_ConApp)
+
+#xlsx::write.xlsx(as.data.frame(POG_New), "POG_Nouvelle_Analyse_ConR.xlsx", sheetName = "Sheet1", col.names = TRUE, row.names = FALSE, showNA = FALSE)
+```
+
+
+# Faire tourner la RL
+```{r Obtenir le statut RL, include=FALSE}
+# Partie du script de Nicolas qui permet de mettre a jour les evaluations de la RL
+# Commencer plus loin si ca a deja ete fait 
+esp <- POG %>% 
+  dplyr::select(taxon) %>%
+  rename(., "tax_initial" = "taxon") %>%
+  #slice(1:2000) %>% #faire en plusieurs fois
+  mutate(tax_sp_level = tax_initial) %>%
+  write_csv(., "esp_RL.csv")
+
+# Commencer ici si la partie precedente a deja ete faite
+esp_SA <- read_csv("RL - ConApp/esp_RL.csv")
+esp_SA <- esp_SA %>%
+  mutate(tax_sp_level = gsub("\\?", "", tax_sp_level)) #supprimer les points d'interrogation
+
+API =  ### mettre sa clé ici
+all.cons.status <- list()
+for (i in 1:nrow(esp_SA)) {
+  cat(i, " ")
+res_iucn <- rl_search(name = esp_SA$tax_sp_level[i], parse = F, key = API)
+  if (length(res_iucn$result) > 0) {
+    full <- lapply(res_iucn$result[[1]], function(x) ifelse(is.null(x), NA, x))
+    full$tax_sp_level <- esp_SA$tax_sp_level[i]
+    all.cons.status[[length(all.cons.status)+1]] <- do.call("cbind", full) %>%
+      as_tibble()
+  }
+}
+RL_status_SA <- bind_rows(all.cons.status) %>% 
+  mutate(assessment_year = as.numeric(substr(assessment_date, 0, 4)))
+RL_status_threatened <- if (nrow(RL_status_SA) > 0) {
+  RL_status_SA %>% 
+  filter(grepl("CR|EN|VU", category))
+  } else {
+    tibble()
+  }
+write_csv(RL_status_SA, na = "", "temp.csv")
+
+RL_status_SA <- read_csv("RL - ConApp/temp.csv")
+
+RL_status_SA <- RL_status_SA %>% #renomme les colonnes et choisis celles a garder
+  rename(., "EOO" = "eoo_km2", "AOO" = "aoo_km2") %>%
+  dplyr::select(tax_sp_level, taxonid, category, criteria, assessment_year, EOO, AOO, elevation_upper, elevation_lower, published_year, assessment_date, assessor, reviewer, population_trend)
+colnames(RL_status_SA)[2:14] <- paste(colnames(RL_status_SA)[2:14], "RL", sep = "_")
+
+POG <- POG %>%
+  rename_with(~ gsub("_RL$", "_oldRL", .), ends_with("_RL"))
+
+POG_RL <- POG %>%   #ajout analyses RL dans POG a la place des precedentes en prenant en compte celles faites precedemment pour ConApp
+  left_join(., RL_status_SA, by = c("taxon" = "tax_sp_level")) %>%
+  dplyr::select(-c(taxonid_oldRL:robustness_index_oldRL)) %>%
+  relocate(., taxonid_RL:population_trend_RL , .after = Litterature) %>%
+  add_column(robustness_index_RL = NA) %>%
+  relocate(., robustness_index_RL, .after = population_trend_RL)
+
+#faire que si le write.xlsx ne fonctionne pas directement (strategie)
+#write_csv(POG_RL, na = "", "RL Analysis/POG_RL.csv")
+#POG_RL_1 <- read_csv("RL Analysis/POG_RL.csv")
+
+#xlsx::write.xlsx(as.data.frame(POG_RL), "POG_Nouvelle_Analyse_RL.xlsx", sheetName = "Sheet1", col.names = TRUE, row.names = FALSE, showNA = FALSE)
+
+#Il suffit ensuite de copier les valeurs des colonnes RL dans le POG qui est utilisé. Ne pas oublier de trier de la même façon les 2 excels avec une colonne identique pour que les évaluations correspondent au bon taxon
+```
+
+```{r Transferer les evals RL des synonym, include=FALSE}
+POG_Final <- POG
+to_transfer <- POG$taxonomicStatus == "SYNONYM" & !is.na(POG$taxonid_RL) #selectionne les lignes à transferer
+for (i in which(to_transfer)) { #boucle pour transferer les donnees
+  corresponding_rows <- which(POG$acceptedTaxonKey == POG$acceptedTaxonKey[i] & 
+                              POG$taxonomicStatus == "ACCEPTED" &
+                              is.na(POG$taxonid_RL)) #trouver les lignes correspondantes dans POG_Final
+  if (length(corresponding_rows) == 0) next #pas correspondances, iteration suivante
+  POG_Final[corresponding_rows[1], c("taxonid_RL", "category_RL", "criteria_RL", "assessment_year_RL", 
+                                     "EOO_RL", "AOO_RL", "elevation_upper_RL", "elevation_lower_RL", 
+                                     "published_year_RL", "assessment_date_RL", "assessor_RL", "reviewer_RL", 
+                                     "population_trend_RL")] <- POG[i, c("taxonid_RL", "category_RL", 
+                                                                              "criteria_RL", "assessment_year_RL", 
+                                                                              "EOO_RL", "AOO_RL", 
+                                                                              "elevation_upper_RL", 
+                                                                              "elevation_lower_RL", 
+                                                                              "published_year_RL", 
+                                                                              "assessment_date_RL", 
+                                                                              "assessor_RL", 
+                                                                              "reviewer_RL", 
+                                                                              "population_trend_RL")] #transférer des données
+}
+
+# #faire que si le write.xlsx ne fonctionne pas directement (autre strategie)
+# write_csv(POG_Final, na = "", "RL Analysis/POG_Final.csv")
+# POG_Final_1 <- read_csv("RL Analysis/POG_Final.csv", col_types = 
+#               list(Famille = col_character(), #les colonnes seront lues comme caracteres
+#                    Taxon = col_character(),
+#                    accepetedTaxonName = col_character(),
+#                    taxonomicStatus = col_character(),
+#                    RemarkTaxonomique = col_character(),
+#                    Genre = col_double(),
+#                    robustness_index_RL = col_character(),
+#                    range_restricted_ConApp = col_character()
+#                    )
+# 
+# xlsx::write.xlsx(as.data.frame(POG_Final), "POG_RL_Accepted.xlsx", sheetName = "Sheet1", col.names = TRUE, row.names = FALSE, showNA = FALSE)
+```
+
+
+# Utilisation dans QGIS
+```{r Modification des occurrences pour QGIS, include=FALSE} 
+RB_zone <- subset(RB_POG, ddlat >= -5.99 & ddlat <= 6.63 & ddlon >= 7.5 & ddlon <= 16.54) %>%  # Uniquement les occurrences dans le carre
+  filter(introduced_status == FALSE | is.na(introduced_status)) %>% # remove introduced species
+  filter(georef_final == 1, is.na(garden)) %>% #keep georeferenced specimens and remove cultivated specimens
+  dplyr::select(idrb_n, tax_fam, tax_gen, tax_esp, tax_sp_level, tax_infra_level, colnam, suffix, nbr, prefix, coly, colm, cold, accuracy, calc_accuracy, ddlat, ddlon, kind_col, idtax_f) %>%  #select columns kept
+  mutate(final_accuracy = ifelse(is.na(accuracy), calc_accuracy, accuracy))
+#write_csv(RB_zone, "RB_zone.csv")
+```
+
+# Efforts d'echantillonnage
+######### Voir code supplémentaire (Mémoire_Echantillonage)
+
+# ACP des couches raster
+######### Voir code supplémentaire (creating_gabon_rasters)
+
+# Niches écologiques (MaxEnt)
+```{r fichiers presences MaxEnt, include=FALSE}
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/arbres_maxent.xlsx")
+RB_sp <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+RB_MaxEnt <- RB_sp %>% # Creation du df pour maxent
+  filter(tax_sp_level %in% sp_etude$Taxons) %>%  #uniquement sp etudiees
+  dplyr::select(tax_sp_level, detnam, dety, colnam, coly, alt, description, habitat, tax_fam, geometry) %>% #selection des colonnes pour Maxent
+  mutate(geometry = gsub("\\(|\\)", "", geometry)) %>% #long et lat a partir de geometry
+  separate(geometry, into = c("longitude", "latitude"), sep = ",") %>%
+  mutate(
+    longitude = as.numeric(sub("c", "", longitude)),
+    latitude = as.numeric(latitude)
+  ) 
+# write_csv(RB_MaxEnt_modelisation, "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt_arbres.csv")
+
+# RB_MaxEnt_modelisation <- RB_sp %>%
+#   filter(tax_sp_level %in% sp_etude$Taxons) %>%  #uniquement sp etudiees
+#   dplyr::select(tax_sp_level, geometry) %>% #selection des colonnes pour Maxent
+#   rename(Taxon = tax_sp_level) %>%
+#   mutate(geometry = gsub("\\(|\\)", "", geometry)) %>% #long et lat a partir de geometry
+#   separate(geometry, into = c("longitude", "latitude"), sep = ",") %>%
+#   mutate(
+#     longitude = as.numeric(sub("c", "", longitude)),
+#     latitude = as.numeric(latitude)
+#   )
+```
+
+```{r fichiers presences MaxEnt - sp problematiques, include=FALSE}
+sp_etude <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Maxent/filtered_species.xlsx")
+RB_sp <- RB %>% # rattrapage des potenielles erreures de RB_zone
+  filter(tax_sp_level %in% sp_etude$Fichier) %>% #uniquement sp etudiees
+  filter(is.na(kind_col) | kind_col=="Herb" | kind_col=="herb" | kind_col=="PRESERVED_SPECIMEN") %>%
+  filter(introduced_status == FALSE | is.na(introduced_status)) %>% #remove introduced species
+  filter(!(DB == "transect" & is.na(nbr) & is.na(colnam))) %>%
+  distinct(DB, nbr, colnam, tax_sp_level, .keep_all = TRUE) %>%
+  subset(ddlat >= -7 & ddlat <= 7 & ddlon >= 7 & ddlon <= 17) %>%
+  rename(latitude = ddlat) %>%
+  rename(longitude = ddlon)
+
+# Creation du df pour maxent
+RB_MaxEnt <- RB_sp %>%
+  filter(tax_sp_level %in% sp_etude$Fichier) %>%  #uniquement sp etudiees
+  dplyr::select(tax_sp_level, detnam, dety, colnam, coly, alt, description, habitat, tax_fam, longitude, latitude) #selection des colonnes pour Maxent
+write_csv(RB_MaxEnt, "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt_bis.csv")
+
+RB_MaxEnt_modelisation <- RB_sp %>%
+  filter(tax_sp_level %in% sp_etude$Fichier) %>%  #uniquement sp etudiees
+  dplyr::select(tax_sp_level,  longitude, latitude) %>% #selection des colonnes pour Maxent
+  rename(Taxon = tax_sp_level)
+write_csv(RB_MaxEnt_modelisation, "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/RB_MaxEnt_modelisation_bis.csv")
+```
+
+
+```{r Transformation couches environnementales, include=FALSE }
+# Download datasets if already compiled before 
+BDTICM <- raster("D:/Mémoire_documents_supps/Rasters compilés/BDTICM_africa.tif")
+CECSOL <- raster("D:/Mémoire_documents_supps/Rasters compilés/CECSOL_africa.tif")
+CLYPPT <- raster("D:/Mémoire_documents_supps/Rasters compilés/CLYPPT_africa.tif")
+SLTPPT <- raster("D:/Mémoire_documents_supps/Rasters compilés/SLTPPT_africa.tif")
+SNDPPT <- raster("D:/Mémoire_documents_supps/Rasters compilés/SNDPPT_africa.tif")
+bio1 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio1_africa.tif")
+bio2 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio2_africa.tif")
+bio4 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio4_africa.tif")
+bio7 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio7_africa.tif")
+bio12 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio12_africa.tif")
+bio16 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio16_africa.tif")
+bio17 <- raster("D:/Mémoire_documents_supps/Rasters compilés/bio17_africa.tif")
+landcov <- raster("D:/Mémoire_documents_supps/Rasters compilés/landcov_africa.tif")
+
+destination <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Environmental layers/" # Destination path for files ASCII
+writeRaster(BDTICM, file.path(destination, "BDTICM.asc")) # Saving each raster in ASCII
+writeRaster(CECSOL, file.path(destination, "CECSOL.asc"))
+writeRaster(CLYPPT, file.path(destination, "CLYPPT.asc"))
+writeRaster(SLTPPT, file.path(destination, "SLTPPT.asc"))
+writeRaster(SNDPPT, file.path(destination, "SNDPPT.asc"))
+writeRaster(bio1, file.path(destination, "bio1.asc"))
+writeRaster(bio2, file.path(destination, "bio2.asc"))
+writeRaster(bio4, file.path(destination, "bio4.asc"))
+writeRaster(bio7, file.path(destination, "bio7.asc"))
+writeRaster(bio12, file.path(destination, "bio12.asc"))
+writeRaster(bio16, file.path(destination, "bio16.asc"))
+writeRaster(bio17, file.path(destination, "bio17.asc"))
+writeRaster(landcov, file.path(destination, "landcov.asc"))
+```
+
+######### Voir code supplémentaire (Memoire_Maxent)
+
+# BRT et cross-validation
+######### Voir code supplémentaire (Memoire_BRT)
+
+# Séparation des 10% avec R
+
+```{r Telechargement de donnees importantes, include=FALSE}
+concessions <- st_read("C:/Users/Alex Massart/Documents/Concess_forest_corr.shp")
+#richesse_raster <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Maxent/Cartes/raster_stacking.tif")
+richesse_raster <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/BRT/predicted_indice_avg.tif")
+
+extent_raster <- extent(richesse_raster) # Définir l'extent et la résolution pour le nouveau raster
+res <- 0.1  # résolution de 0,1°
+grid_raster <- raster(ext = extent_raster, res = res) # Créer un raster modifié avec une valeur uniforme pour chaque carré de 0,1° de côté
+mean_richesse <- aggregate(richesse_raster, fact = c(res(richesse_raster)[1] / res, res(richesse_raster)[2] / res), fun = mean, na.rm = TRUE) # Obtenir les valeurs moyennes de l'indice de richesse pour chaque carré de 0,1°
+values(grid_raster) <- values(mean_richesse) # Attribuer les valeurs moyennes au nouveau raster
+```
+
+```{r Séparation des 10%, include=FALSE}
+# Trouver la zone de 10% avec l'indice de richesse moyen le plus élevé pour chaque concession
+results <- list()
+for (i in seq_len(nrow(concessions))) {
+  concession <- concessions[i, ]
+  area_10pct <- st_area(concession) * 0.1
+  potential_zones <- st_make_grid(concession, cellsize = sqrt(area_10pct), square = TRUE)
+  potential_zones <- st_intersection(potential_zones, concession)
+  mean_richesse_zones <- exact_extract(grid_raster, potential_zones, fun = 'mean') # Calculer l'indice de richesse moyen pour chaque zone potentielle
+  potential_zones$mean_richesse <- mean_richesse_zones
+  best_zone <- potential_zones[which.max(potential_zones$mean_richesse), ] # Trouver la zone avec la richesse moyenne la plus élevée
+  best_zone_sf <- st_as_sf(best_zone)
+  best_zone_sf$OBJECTID_1 <- concession$OBJECTID_1 # Ajouter l'ID de la concession
+  results[[i]] <- best_zone_sf
+}
+best_zones <- do.call(rbind, results) # Combiner tous les résultats
+# Exporter les résultats
+# output_path <- "C:/Users/Alex Massart/Documents/output_zones_BRT.shp"
+# st_write(best_zones, output_path)
+```
+
+```{r Diagramme avec les valeurs de l'indice par zone de 10%}
+best_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_BRT.shp")
+#best_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+
+richesse_raster <- projectRaster(richesse_raster, crs = st_crs(concessions)$proj4string) # Aligner les CRS des polygones et du raster
+
+zone_means <- list() # Calculer la valeur moyenne de l'indice pour chaque petite zone délimitée
+for (i in seq_len(nrow(best_zones))) {
+  zone <- best_zones[i, ]
+  mean_value <- exact_extract(richesse_raster, zone, fun = 'mean')
+  zone_means[[i]] <- mean_value
+}
+
+best_zones$mean_value <- unlist(zone_means) # Ajouter les valeurs moyennes de l'indice au dataframe des meilleures zones
+breaks <- seq(0, 200, by = 10) # Définir les breaks entre 0 et 1,5 avec une granularité de 0.1
+best_zones$interval <- cut(best_zones$mean_value, breaks = breaks, right = FALSE) # Classer les indices moyens en intervalles définis
+interval_counts <- table(best_zones$interval) # Compter le nombre de zones dans chaque intervalle
+interval_counts_df <- as.data.frame(interval_counts) # Convertir en dataframe pour ggplot
+colnames(interval_counts_df) <- c("Interval", "Count")
+
+# Créer un diagramme des valeurs moyennes de l'indice par intervalle
+ggplot(data = interval_counts_df) +
+  geom_bar(aes(x = Interval, y = Count), stat = "identity") +
+  labs(title = "",
+       x = "Intervalle de l'indice de richesse",
+       y = "Nombre de zones") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#ggsave("C:/Users/Alex Massart/Documents/Maxent_mean_value_interval_plot.png")
+```
+
+```{r Visualisation des 2 méthodes pour defens}
+concessions <- st_read("C:/Users/Alex Massart/Documents/Concess_forest_corr.shp")
+best_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+country_boundaries <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+brt_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_BRT.shp")
+
+target_crs <- st_crs(concessions) # Choisir le CRS de référence
+best_zones <- st_transform(best_zones, crs = target_crs)
+country_boundaries <- st_transform(country_boundaries, crs = target_crs)
+brt_zones <- st_transform(brt_zones, crs = target_crs)
+
+intersect_zones <- st_intersection(best_zones, brt_zones)
+
+#st_write(intersect_zones, "C:/Users/Alex Massart/Documents/intersect_zones.shp")
+
+map <- ggplot() +
+  geom_sf(data = country_boundaries, fill = NA, color = "black", size = 1, linetype = "solid") +
+  geom_sf(data = concessions, fill = NA, color = "darkgrey", size = 1, linetype = "solid") +
+  geom_sf(data = best_zones, aes(fill = "lightgreen"), alpha = 0.5, color = "green", size = 1) +
+  geom_sf(data = brt_zones, aes(fill = "lightblue"), alpha = 0.5, color = "blue", size = 1) +
+  geom_sf(data = intersect_zones, aes(fill = "red"), alpha = 0.5, color = "red", size = 1) +
+  scale_fill_manual(
+    name = "Légende",
+    values = c("blue", "green", "red"),
+    labels = c("Zones en défens Maxent", "Zones en défens BRT", "Superposition des zones")
+  ) +
+  scale_color_manual(
+    name = "Lignes",
+    values = c("darkgrey", "black"),
+    labels = c("Concessions forestières", "Limites du Gabon"),
+    guide = guide_legend(override.aes = list(fill = NA))  # Enlever le remplissage pour les lignes
+  ) +
+  ggtitle("") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 15),
+    legend.position = "right",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 8),
+    legend.box.margin = margin(10, 10, 10, 10) # Ajouter une marge autour de la légende
+  )
+
+ggsave("Carte_zones_défens3.png", plot = map, width = 12, height = 8, dpi = 300)
+```
+
+```{r Informations importantes}
+maxent_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+#brt_zones <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Séries de conservation/Fusion_SériesConservation.shp")
+brt_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_BRT.shp")
+# Vérification des systèmes de coordonnées
+crs_maxent <- st_crs(maxent_zones)
+crs_brt <- st_crs(brt_zones)
+
+print(crs_maxent)
+print(crs_brt)
+
+# Si l'un des shapefiles n'a pas de CRS défini, définir le CRS manuellement
+# Supposons que le CRS attendu soit EPSG:4326 (WGS 84), vous pouvez le remplacer par le CRS correct
+if (is.na(crs_maxent)) {
+  st_crs(maxent_zones) <- 4326
+  crs_maxent <- st_crs(maxent_zones)  # Recharger le CRS après l'avoir défini
+}
+
+if (is.na(crs_brt)) {
+  st_crs(brt_zones) <- 4326
+  crs_brt <- st_crs(brt_zones)  # Recharger le CRS après l'avoir défini
+}
+
+if(crs_maxent != crs_brt) {  # Si les systèmes de coordonnées sont différents, transformer brt_zones pour qu'il ait le même CRS que maxent_zones
+  brt_zones <- st_transform(brt_zones, crs_maxent)
+}
+
+maxent_zones <- maxent_zones %>% # Calcul de la superficie de chaque objet pour maxent_zones
+  mutate(area = st_area(geometry))
+total_area_maxent <- sum(maxent_zones$area) # Calcul de la superficie totale pour maxent_zones
+brt_zones <- brt_zones %>% # Calcul de la superficie de chaque objet pour brt_zones
+  mutate(area = st_area(geometry))
+total_area_brt <- sum(brt_zones$area) # Calcul de la superficie totale pour brt_zones
+intersection <- st_intersection(maxent_zones, brt_zones) # Calcul de la zone de recouvrement entre les deux shapefiles
+intersection_area <- sum(st_area(intersection)) # Calcul de la superficie de la zone de recouvrement
+percentage_overlap <- (intersection_area / total_area_maxent) * 100 # Calcul du pourcentage de recouvrement
+
+print(paste("Superficie totale de maxent_zones: ", total_area_maxent, " m^2"))
+print(paste("Superficie totale de brt_zones: ", total_area_brt, " m^2"))
+print(paste("Superficie de la zone de recouvrement: ", intersection_area, " m^2"))
+print(paste("Pourcentage de recouvrement de maxent_zones par brt_zones: ", percentage_overlap, "%"))
+```
+
+
+# Comparaison des résultats des modélisations
+
+```{r Coefficient de corrélation de Pearson}
+raster_maxent_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/raster_stacking.tif"
+raster_brt_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/BRT/predicted_indice_avg.tif"
+
+#raster_maxent_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster visualisation/Maxent_stacking_GAB.tif"
+#raster_brt_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster visualisation/BRT_prediction_GAB.tif"
+
+raster_maxent <- raster(raster_maxent_path)
+raster_brt <- raster(raster_brt_path)
+
+if (!compareRaster(raster_maxent, raster_brt)) {
+  stop("Les rasters n'ont pas le même maillage. Veuillez vérifier et aligner les rasters avant de continuer.")
+}
+
+values_maxent <- getValues(raster_maxent) # Convertir les rasters en vecteurs
+values_brt <- getValues(raster_brt)
+
+valid_idx <- complete.cases(values_maxent, values_brt) # Enlever les NA pour une comparaison correcte
+values_maxent <- values_maxent[valid_idx]
+values_brt <- values_brt[valid_idx]
+
+cor_test <- cor.test(values_maxent, values_brt, method = "pearson") #calcul coefficient de Pearson et significativité
+
+print(paste("Le coefficient de corrélation de Pearson entre les deux rasters est:", cor_test$estimate))
+print(paste("Valeur p associée:", cor_test$p.value))
+```
+
+```{r Graphiques des rasters résultats}
+maxent_raster <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/raster_stacking.tif")
+brt_raster <- raster("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/BRT/predicted_indice_avg.tif")
+countries <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+countries <- st_transform(countries, crs(maxent_raster)) # Transformer les limites des pays pour correspondre au CRS des rasters
+
+maxent_df <- as.data.frame(maxent_raster, xy = TRUE) # Convertir les rasters en data frames pour ggplot2
+brt_df <- as.data.frame(brt_raster, xy = TRUE)
+
+colnames(maxent_df)[3] <- "Maxent" # Nommer les colonnes de valeur pour les rasters
+colnames(brt_df)[3] <- "BRT"
+
+maxent_extent <- extent(maxent_raster) # Obtenir les limites des rasters
+brt_extent <- extent(brt_raster)
+
+plot_maxent <- ggplot() + 
+  geom_raster(data = maxent_df, aes(x = x, y = y, fill = Maxent), na.rm = TRUE) +
+  geom_sf(data = countries, fill = NA, color = "black") +
+  scale_fill_gradientn(colors = c("yellow", "orange", "red", "darkred"), na.value = "transparent") +
+  coord_sf(xlim = c(maxent_extent@xmin, maxent_extent@xmax), ylim = c(maxent_extent@ymin, maxent_extent@ymax)) +
+  theme_minimal() +
+  labs(title = "", fill = "Légende")
+
+plot_brt <- ggplot() + 
+  geom_raster(data = brt_df, aes(x = x, y = y, fill = BRT), na.rm = TRUE) +
+  geom_sf(data = countries, fill = NA, color = "black") +
+  scale_fill_gradientn(colors = c("yellow", "orange", "red", "darkred"), na.value = "transparent") +
+  coord_sf(xlim = c(brt_extent@xmin, brt_extent@xmax), ylim = c(brt_extent@ymin, brt_extent@ymax)) +
+  theme_minimal() +
+  labs(title = "", fill = "Légende")
+
+print(plot_maxent)
+print(plot_brt)
+#ggsave("Maxent_Raster.png", plot = plot_maxent, width = 10, height = 8)
+#ggsave("BRT_Raster.png", plot = plot_brt, width = 10, height = 8)
+```
+
+```{r Quantité d'sp dans zones en defens}
+occurrences_df <- read.csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+species_df <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_final.xlsx", sheet = 1)
+
+# Extraire et nettoyer les colonnes 'ddlat' et 'ddlon' à partir des colonnes 'FID' et 'geometry'
+occurrences_df <- occurrences_df %>%
+  mutate(ddlon = as.numeric(gsub("c\\(", "", FID)),
+         ddlat = as.numeric(gsub("\\)", "", geometry))) %>%
+  select(tax_sp_level, ddlat, ddlon)
+
+abs_df <- read.csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_abs.csv")
+abs_df <- abs_df %>%
+  select(tax_sp_level, ddlat, ddlon)
+
+# Combiner les deux dataframes (ajouter les lignes de abs_df à occurrences_df)
+combined_df <- bind_rows(occurrences_df, abs_df)
+combined_df <- combined_df %>%
+  filter(tax_sp_level %in% species_df$tax)
+
+#write.csv(combined_df, "combined.csv")
+
+#La suite est faite dans qgis
+```

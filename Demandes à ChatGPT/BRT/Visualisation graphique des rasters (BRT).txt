@@ -1,0 +1,96 @@
+https://chat.openai.com/share/099f2271-c01f-4360-b9b2-7b2443168607
+
+User
+J'ai moi-même pour mon étude télécharger des variables climatiques et j'aimerais également les plots pour les visualiser plus facilement. Serait-il possible de me rajouter les lignes de code R permettant de plot ces variables ? Voici le code que j'utilise pour les extraire : # Load climatic data
+bio1 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif")
+bio2 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_2.tif")
+bio4 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_4.tif")
+bio7 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_7.tif")
+bio12 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_12.tif")
+bio16 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_16.tif")
+bio17 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_17.tif")
+hand <- raster("D:/Mémoire_documents_supps/Rasters Internet/Merit Hydro HAND/HAND2.tif")
+
+# extract data per cell of grid
+raster_grid <- raster("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/raster_grid.tif")
+centroids <- rasterToPoints(raster_grid, spatial = TRUE)
+centroids_df <- data.frame(centroids@coords)
+bio1 <- extract(bio1, centroids_df)
+bio2 <- extract(bio2, centroids_df)
+bio4 <- extract(bio4, centroids_df)
+bio7 <- extract(bio7, centroids_df)
+bio12 <- extract(bio12, centroids_df)
+bio16 <- extract(bio16, centroids_df)
+bio17 <- extract(bio17, centroids_df)
+hand <- extract(hand, centroids_df)
+ChatGPT
+
+Pour tracer les variables climatiques extraites à partir de vos fichiers raster, vous pouvez utiliser la bibliothèque R rasterVis, qui offre des fonctionnalités avancées pour visualiser les données raster. Voici comment vous pouvez le faire pour chaque variable :
+
+r
+
+library(rasterVis)
+
+# Créer des palettes de couleurs
+colourScale_bio <- colorRampPalette(brewer.pal(9, "Blues"))(100)
+colourScale_hand <- colorRampPalette(brewer.pal(9, "Oranges"))(100)
+
+# Tracer les variables climatiques
+par(mfrow=c(3, 3))  # Configuration du tracé en grille 3x3
+
+# Tracer bio1
+levelplot(bio1, col.regions = colourScale_bio,
+          main = "Variable bio1", xlab = "", ylab = "")
+
+# Tracer bio2
+levelplot(bio2, col.regions = colourScale_bio,
+          main = "Variable bio2", xlab = "", ylab = "")
+
+# Tracer bio4
+levelplot(bio4, col.regions = colourScale_bio,
+          main = "Variable bio4", xlab = "", ylab = "")
+
+# Tracer bio7
+levelplot(bio7, col.regions = colourScale_bio,
+          main = "Variable bio7", xlab = "", ylab = "")
+
+# Tracer bio12
+levelplot(bio12, col.regions = colourScale_bio,
+          main = "Variable bio12", xlab = "", ylab = "")
+
+# Tracer bio16
+levelplot(bio16, col.regions = colourScale_bio,
+          main = "Variable bio16", xlab = "", ylab = "")
+
+# Tracer bio17
+levelplot(bio17, col.regions = colourScale_bio,
+          main = "Variable bio17", xlab = "", ylab = "")
+
+# Tracer hand
+levelplot(hand, col.regions = colourScale_hand,
+          main = "Variable HAND", xlab = "", ylab = "")
+
+Assurez-vous d'adapter les palettes de couleurs et les paramètres de tracé en fonction de vos préférences et de la nature de vos données. Ce code vous permettra de tracer chaque variable climatique dans une disposition de grille 3x3 pour une visualisation facile.
+User
+> levelplot(bio1, col.regions = colourScale_bio,
++           main = "Variable bio1", xlab = "", ylab = "")
+Erreur dans UseMethod("levelplot") : 
+  pas de méthode pour 'levelplot' applicable pour un objet de classe "c('double', 'numeric')"
+ChatGPT
+
+Il semble que le format des données que vous utilisez pour bio1 (et potentiellement pour les autres variables également) n'est pas compatible avec la fonction levelplot de la bibliothèque rasterVis.
+
+La fonction levelplot de rasterVis est conçue pour travailler avec des objets de classe raster. Cependant, vos données pour bio1 semblent être de classe "numeric".
+
+Pour résoudre cette erreur, vous devez d'abord créer un objet raster à partir de vos données bio1. Vous pouvez le faire en utilisant la fonction raster fournie par la bibliothèque raster. Voici comment vous pouvez le faire :
+
+r
+
+# Créer un objet raster à partir de vos données bio1
+bio1_raster <- raster(matrix(bio1, ncol = ncols, nrow = nrows))  # Remplacez 'ncols' et 'nrows' par les dimensions de votre raster
+
+# Tracer bio1
+levelplot(bio1_raster, col.regions = colourScale_bio,
+          main = "Variable bio1", xlab = "", ylab = "")
+
+Assurez-vous de remplacer 'ncols' et 'nrows' par les dimensions correctes de votre raster. Vous devrez répéter ce processus pour chaque variable climatique que vous souhaitez tracer.

@@ -1,0 +1,2377 @@
+https://chatgpt.com/share/c58bcd72-aa3d-4c9a-a712-f8dc88c12b93
+https://chatgpt.com/share/bd2b79e3-4d63-436a-94d2-fa49d26032a4
+https://chatgpt.com/share/e37ff58d-bda4-4b39-87f0-1af08171b4b1
+
+
+
+Bonjour Chat, j'aimerais un petit peu modifier ce code R qui me permet de faire un graphique de l'effort d'échantillonnage. Il faudrait que tu rajoutes les noms des pays (trouvables dans la colonne 'POPYCOUN' sous forme abrégée où GB="Gabon", ) qui ont une valeur pour la colonne 'AREA' plus grande que 2. Ces noms devraient être en dehors du pays et être reliés par des traits aux pays. Il faudrait également augmenter un l'épaisseur des traits pour mieux visualiser les pays.
+
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv") #downloading if steps above already done
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+ID_RB_speec_dups <- unique(RB_zone_grid$ID[duplicated(RB_zone_grid$ID)]) #which ID specimens are duplicated by st_intersection (= falling at the border of two different cells)
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+
+RB_zone_grid <- RB_zone_grid %>% # Replace the line above so we randomly give one cell for specimens that fall between two grid cells
+  group_by(ID) %>%
+  slice_sample(n = 1) %>%
+  ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>%
+  group_by (ID_grid) %>%
+  summarise(full_esp =  n_distinct(tax_infra_level), full_spec = n())   #count number of species and specimens per bioregion
+flora_all_grid <- left_join(grid, flora_all_grid, by="ID_grid") %>%
+  dplyr::select(ID_grid, full_esp, full_spec)
+
+# allow to divide the flora in sp with more or less presence in grid
+sample0<- flora_all_grid %>% # 0 occurrence
+  filter(is.na(full_spec)) %>% 
+  st_union()
+sample1_10<- flora_all_grid %>% # 1-10 occurrences
+  filter(full_spec<=10 & full_spec>0) %>% 
+  st_union()
+sample11_50<- flora_all_grid %>% # 11-50 occurrences
+  filter(full_spec<=50 & full_spec>10) %>% 
+  st_union()
+sample51_100<- flora_all_grid %>% # 51-100 occurrences
+  filter(full_spec<=100 & full_spec>50) %>% 
+  st_union()
+sample101_125 <- flora_all_grid %>% # 100-125 occurrences
+  filter(full_spec<=125 & full_spec>100) %>% 
+  st_union()
+sample126<- flora_all_grid %>% # plus de 125 occurrences
+  filter(full_spec>125) %>% 
+  st_union()
+
+
+ggplot() + 
+  geom_sf(data = sample0, aes(fill = "0 occurrences"), color = NA, alpha = 0.75) + # LightYellow
+  geom_sf(data = sample1_10, aes(fill = "1-10 occurrences"), color = NA, alpha = 0.75) + # Gold
+  geom_sf(data = sample11_50, aes(fill = "11-50 occurrences"), color = NA, alpha = 0.75) + # Orange
+  geom_sf(data = sample51_100, aes(fill = "51-100 occurrences"), color = NA, alpha = 0.75) + # OrangeRed
+  geom_sf(data = sample101_125, aes(fill = "101-125 occurrences"), color = NA, alpha = 0.75) + # Red
+  geom_sf(data = sample126, aes(fill = "Plus de 125 occurrences"), color = NA, alpha = 0.75) + # DarkRed
+  geom_sf(data = africapolitical, fill = NA, color = "#00000065", size = 1) + # Épaisseur accrue
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Bordure du Gabon épaisse
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 10) + # Couche supplémentaire pour accentuer la bordure
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true", height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  scale_fill_manual(name = "Nombre d'occurrences",
+                    values = c("0 occurrences" = "white",
+                               "1-10 occurrences" = "#FFD700",
+                               "11-50 occurrences" = "#FF4500",
+                               "51-100 occurrences" = "#FF0000",
+                               "101-125 occurrences" = "#FFA500",
+                               "Plus de 125 occurrences" = "#8B0000"),
+                    labels = c("0 occurrences", "1-10 occurrences", "11-50 occurrences", "51-100 occurrences", "101-125 occurrences", "Plus de 125 occurrences")) +
+  theme(axis.text = element_text(size = 14, color = "black"), 
+        axis.title = element_blank(), 
+        legend.title = element_text(size = 16), 
+        legend.text = element_text(size = 14), 
+        legend.position = "right")
+
+ggsave("Sampling_effort_image2.png", width = 11.69, height = 8.27, dpi = 600)
+ChatGPT
+
+Pour intégrer les noms des pays dont la colonne 'AREA' a une valeur supérieure à 2 et les relier par des traits aux pays, nous devons procéder en plusieurs étapes :
+
+    Filtrer les pays avec une 'AREA' supérieure à 2.
+    Extraire leurs coordonnées.
+    Ajouter des annotations pour les noms de pays avec des traits de liaison.
+
+Voici le code mis à jour pour inclure ces modifications :
+
+r
+
+library(sf)
+library(tidyverse)
+library(ggplot2)
+
+# Lecture des fichiers
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+# Créer la grille et la découper à la zone d'intérêt
+CS <- 0.1
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)]) / CS), ceiling(diff(st_bbox(zone)[c(2, 4)]) / CS)), square = TRUE)
+grid <- as_tibble(grid) %>% mutate(ID_grid = c(1:length(grid))) %>% st_as_sf()
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+# Traiter RB_zone_grid
+RB_zone_grid <- RB_zone_grid %>% group_by(ID) %>% slice_sample(n = 1) %>% ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>% group_by(ID_grid) %>% summarise(full_esp = n_distinct(tax_infra_level), full_spec = n())
+flora_all_grid <- left_join(grid, flora_all_grid, by = "ID_grid") %>% dplyr::select(ID_grid, full_esp, full_spec)
+
+# Diviser la flore en groupes selon le nombre d'occurrences
+sample0 <- flora_all_grid %>% filter(is.na(full_spec)) %>% st_union()
+sample1_10 <- flora_all_grid %>% filter(full_spec <= 10 & full_spec > 0) %>% st_union()
+sample11_50 <- flora_all_grid %>% filter(full_spec <= 50 & full_spec > 10) %>% st_union()
+sample51_100 <- flora_all_grid %>% filter(full_spec <= 100 & full_spec > 50) %>% st_union()
+sample101_125 <- flora_all_grid %>% filter(full_spec <= 125 & full_spec > 100) %>% st_union()
+sample126 <- flora_all_grid %>% filter(full_spec > 125) %>% st_union()
+
+# Filtrer les pays avec AREA > 2
+large_area_countries <- africapolitical %>% filter(AREA > 2)
+
+# Extraire les coordonnées des centres des pays
+country_centers <- st_centroid(large_area_countries)
+country_labels <- cbind(st_coordinates(country_centers), large_area_countries$POPYCOUN)
+
+# Création du graphique
+ggplot() + 
+  geom_sf(data = sample0, aes(fill = "0 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample1_10, aes(fill = "1-10 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample11_50, aes(fill = "11-50 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample51_100, aes(fill = "51-100 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample101_125, aes(fill = "101-125 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample126, aes(fill = "Plus de 125 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = africapolitical, fill = NA, color = "#00000065", size = 1) + 
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 1.5) +
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true", height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  scale_fill_manual(name = "Nombre d'occurrences",
+                    values = c("0 occurrences" = "white",
+                               "1-10 occurrences" = "#FFD700",
+                               "11-50 occurrences" = "#FF4500",
+                               "51-100 occurrences" = "#FF0000",
+                               "101-125 occurrences" = "#FFA500",
+                               "Plus de 125 occurrences" = "#8B0000"),
+                    labels = c("0 occurrences", "1-10 occurrences", "11-50 occurrences", "51-100 occurrences", "101-125 occurrences", "Plus de 125 occurrences")) +
+  theme(axis.text = element_text(size = 14, color = "black"), 
+        axis.title = element_blank(), 
+        legend.title = element_text(size = 16), 
+        legend.text = element_text(size = 14), 
+        legend.position = "right") +
+  # Ajouter des annotations pour les pays avec AREA > 2
+  geom_text(data = as.data.frame(country_labels), aes(X, Y, label = V3), size = 4, hjust = 1.2, vjust = 1.2, color = "black") +
+  geom_segment(data = as.data.frame(country_labels), aes(x = X, y = Y, xend = X + 0.5, yend = Y + 0.5), color = "black")
+
+# Sauvegarder l'image
+ggsave("Sampling_effort_image2.png", width = 11.69, height = 8.27, dpi = 600)
+
+Ce code :
+
+    Filtre les pays avec AREA > 2.
+    Calcule les centres géographiques de ces pays.
+    Ajoute des annotations de texte pour les noms des pays et des lignes reliant ces noms aux centres des pays respectifs.
+
+N'oubliez pas d'ajuster les coordonnées de l'annotation (xend et yend) pour s'assurer que les noms ne chevauchent pas les limites des pays, et adaptez le chemin des fichiers si nécessaire.
+> ggplot() + 
++   geom_sf(data = sample0, aes(fill = "0 occurrences"), color = NA, alpha = 0.75) + 
++   geom_sf(data = sample1_10, aes(fill = "1-10 occurrences"), color = NA, alpha = 0.75) + 
++   geom_sf(data = sample11_50, aes(fill = "11-50 occurrences"), color = NA, alpha = 0.75) + 
++   geom_sf(data = sample51_100, aes(fill = "51-100 occurrences"), color = NA, alpha = 0.75) + 
++   geom_sf(data = sample101_125, aes(fill = "101-125 occurrences"), color = NA, alpha = 0.75) + 
++   geom_sf(data = sample126, aes(fill = "Plus de 125 occurrences"), color = NA, alpha = 0.75) + 
++   geom_sf(data = africapolitical, fill = NA, color = "#00000065", size = 1) + 
++   geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 1.5) +
++   coord_sf(xlim = c(6, 18), ylim = c(-7, 7), expand = FALSE) +
++   annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
++   annotation_north_arrow(location = "bl", which_north = "true", height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
++   scale_fill_manual(name = "Nombre d'occurrences",
++                     values = c("0 occurrences" = "white",
++                                "1-10 occurrences" = "#FFD700",
++                                "11-50 occurrences" = "#FF4500",
++                                "51-100 occurrences" = "#FF0000",
++                                "101-125 occurrences" = "#FFA500",
++                                "Plus de 125 occurrences" = "#8B0000"),
++                     labels = c("0 occurrences", "1-10 occurrences", "11-50 occurrences", "51-100 occurrences", "101-125 occurrences", "Plus de 125 occurrences")) +
++   theme(axis.text = element_text(size = 14, color = "black"), 
++         axis.title = element_blank(), 
++         legend.title = element_text(size = 16), 
++         legend.text = element_text(size = 14), 
++         legend.position = "right") +
++   # Ajouter des annotations pour les pays avec AREA > 2
++   geom_text(data = as.data.frame(country_labels), aes(X, Y, label = V3), size = 4, hjust = 1.2, vjust = 1.2, color = "black") +
++   geom_segment(data = as.data.frame(country_labels), aes(x = X, y = Y, xend = X + 0.5, yend = Y + 0.5), color = "black")
+Error in geom_segment():
+! Problem while computing aesthetics.
+ℹ Error occurred in the 12th layer.
+Caused by error in X + 0.5:
+! argument non numérique pour un opérateur binaire
+Backtrace:
+  1. base (local) <fn>(x)
+  2. ggplot2:::print.ggplot(x)
+  4. ggplot2:::ggplot_build.ggplot(x)
+  5. ggplot2:::by_layer(...)
+ 12. ggplot2 (local) f(l = layers[[i]], d = data[[i]])
+ 13. l$compute_aesthetics(d, plot)
+ 14. ggplot2 (local) compute_aesthetics(..., self = self)
+ 15. base::lapply(aesthetics, eval_tidy, data = data, env = env)
+ 16. rlang (local) FUN(X[[i]], ...)
+ChatGPT
+
+L'erreur provient probablement du fait que X et Y ne sont pas des valeurs numériques. Pour corriger cela, nous devons nous assurer que les coordonnées sont bien numériques avant de les utiliser pour les annotations.
+
+Voici le code mis à jour avec les corrections nécessaires :
+
+r
+
+library(sf)
+library(tidyverse)
+library(ggplot2)
+
+# Lecture des fichiers
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+# Créer la grille et la découper à la zone d'intérêt
+CS <- 0.1
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)]) / CS), ceiling(diff(st_bbox(zone)[c(2, 4)]) / CS)), square = TRUE)
+grid <- as_tibble(grid) %>% mutate(ID_grid = c(1:length(grid))) %>% st_as_sf()
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+# Traiter RB_zone_grid
+RB_zone_grid <- RB_zone_grid %>% group_by(ID) %>% slice_sample(n = 1) %>% ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>% group_by(ID_grid) %>% summarise(full_esp = n_distinct(tax_infra_level), full_spec = n())
+flora_all_grid <- left_join(grid, flora_all_grid, by = "ID_grid") %>% dplyr::select(ID_grid, full_esp, full_spec)
+
+# Diviser la flore en groupes selon le nombre d'occurrences
+sample0 <- flora_all_grid %>% filter(is.na(full_spec)) %>% st_union()
+sample1_10 <- flora_all_grid %>% filter(full_spec <= 10 & full_spec > 0) %>% st_union()
+sample11_50 <- flora_all_grid %>% filter(full_spec <= 50 & full_spec > 10) %>% st_union()
+sample51_100 <- flora_all_grid %>% filter(full_spec <= 100 & full_spec > 50) %>% st_union()
+sample101_125 <- flora_all_grid %>% filter(full_spec <= 125 & full_spec > 100) %>% st_union()
+sample126 <- flora_all_grid %>% filter(full_spec > 125) %>% st_union()
+
+# Filtrer les pays avec AREA > 2
+large_area_countries <- africapolitical %>% filter(AREA > 2)
+
+# Extraire les coordonnées des centres des pays
+country_centers <- st_centroid(large_area_countries)
+country_labels <- as.data.frame(st_coordinates(country_centers))
+country_labels$label <- large_area_countries$POPYCOUN
+
+# Création du graphique
+ggplot() + 
+  geom_sf(data = sample0, aes(fill = "0 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample1_10, aes(fill = "1-10 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample11_50, aes(fill = "11-50 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample51_100, aes(fill = "51-100 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample101_125, aes(fill = "101-125 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample126, aes(fill = "Plus de 125 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = africapolitical, fill = NA, color = "#00000065", size = 1) + 
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 1.5) +
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true", height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  scale_fill_manual(name = "Nombre d'occurrences",
+                    values = c("0 occurrences" = "white",
+                               "1-10 occurrences" = "#FFD700",
+                               "11-50 occurrences" = "#FF4500",
+                               "51-100 occurrences" = "#FF0000",
+                               "101-125 occurrences" = "#FFA500",
+                               "Plus de 125 occurrences" = "#8B0000"),
+                    labels = c("0 occurrences", "1-10 occurrences", "11-50 occurrences", "51-100 occurrences", "101-125 occurrences", "Plus de 125 occurrences")) +
+  theme(axis.text = element_text(size = 14, color = "black"), 
+        axis.title = element_blank(), 
+        legend.title = element_text(size = 16), 
+        legend.text = element_text(size = 14), 
+        legend.position = "right") +
+  # Ajouter des annotations pour les pays avec AREA > 2
+  geom_text(data = country_labels, aes(X, Y, label = label), size = 4, hjust = 1.2, vjust = 1.2, color = "black") +
+  geom_segment(data = country_labels, aes(x = X, y = Y, xend = X + 0.5, yend = Y + 0.5), color = "black")
+
+# Sauvegarder l'image
+ggsave("Sampling_effort_image2.png", width = 11.69, height = 8.27, dpi = 600)
+
+Modifications apportées :
+
+    Transformation des coordonnées extraites en un data.frame pour s'assurer qu'elles sont numériques.
+    Ajout de la colonne label contenant les abréviations des pays.
+    Utilisation de geom_text et geom_segment avec des données corrigées.
+
+Assurez-vous que le package sf est correctement installé et chargé, et que les fichiers de données sont bien accessibles aux chemins spécifiés.
+Pour les noms des pays il faudrait les mettre en dehors et les rejoindre avec des traits vers les pays et ensuite il faudrait remplacer : 
+GB = Gabon
+EK = Guinée équatoriale 
+CM = Cameroun
+CF = République du Congo
+2/2
+ChatGPT
+
+Pour ajouter les noms des pays en dehors des frontières et les relier par des traits, nous devons calculer les positions pour placer les étiquettes à l'extérieur des frontières et tracer les segments correspondants.
+
+Voici le code mis à jour pour inclure ces modifications :
+
+r
+
+library(sf)
+library(tidyverse)
+library(ggplot2)
+
+# Lecture des fichiers
+RB_zone_grid <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+# Créer la grille et la découper à la zone d'intérêt
+CS <- 0.1
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)]) / CS), ceiling(diff(st_bbox(zone)[c(2, 4)]) / CS)), square = TRUE)
+grid <- as_tibble(grid) %>% mutate(ID_grid = c(1:length(grid))) %>% st_as_sf()
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+# Traiter RB_zone_grid
+RB_zone_grid <- RB_zone_grid %>% group_by(ID) %>% slice_sample(n = 1) %>% ungroup()
+flora_all_grid <- as_tibble(RB_zone_grid) %>% group_by(ID_grid) %>% summarise(full_esp = n_distinct(tax_infra_level), full_spec = n())
+flora_all_grid <- left_join(grid, flora_all_grid, by = "ID_grid") %>% dplyr::select(ID_grid, full_esp, full_spec)
+
+# Diviser la flore en groupes selon le nombre d'occurrences
+sample0 <- flora_all_grid %>% filter(is.na(full_spec)) %>% st_union()
+sample1_10 <- flora_all_grid %>% filter(full_spec <= 10 & full_spec > 0) %>% st_union()
+sample11_50 <- flora_all_grid %>% filter(full_spec <= 50 & full_spec > 10) %>% st_union()
+sample51_100 <- flora_all_grid %>% filter(full_spec <= 100 & full_spec > 50) %>% st_union()
+sample101_125 <- flora_all_grid %>% filter(full_spec <= 125 & full_spec > 100) %>% st_union()
+sample126 <- flora_all_grid %>% filter(full_spec > 125) %>% st_union()
+
+# Filtrer les pays avec AREA > 2
+large_area_countries <- africapolitical %>% filter(AREA > 2)
+
+# Extraire les coordonnées des centres des pays
+country_centers <- st_centroid(large_area_countries)
+country_labels <- as.data.frame(st_coordinates(country_centers))
+country_labels$label <- large_area_countries$POPYCOUN
+
+# Ajouter des noms de pays complets
+country_labels$label <- recode(country_labels$label,
+                               "GB" = "Gabon",
+                               "EK" = "Guinée équatoriale",
+                               "CM" = "Cameroun",
+                               "CF" = "République du Congo")
+
+# Calculer les positions pour les étiquettes en dehors des frontières
+country_labels$X_label <- country_labels$X + 0.5
+country_labels$Y_label <- country_labels$Y + 0.5
+
+# Création du graphique
+ggplot() + 
+  geom_sf(data = sample0, aes(fill = "0 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample1_10, aes(fill = "1-10 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample11_50, aes(fill = "11-50 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample51_100, aes(fill = "51-100 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample101_125, aes(fill = "101-125 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = sample126, aes(fill = "Plus de 125 occurrences"), color = NA, alpha = 0.75) + 
+  geom_sf(data = africapolitical, fill = NA, color = "#00000065", size = 1) + 
+  geom_sf(data = africapolitical %>% filter(POPYCOUN == "GB"), fill = NA, color = "black", size = 1.5) +
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7), expand = FALSE) +
+  annotation_scale(width_hint = 0.3, height = unit(0.4, "cm"), text_cex = 1) + 
+  annotation_north_arrow(location = "bl", which_north = "true", height = unit(2, "cm"), width = unit(2, "cm"), pad_x = unit(0.05, "cm"), pad_y = unit(0.8, "cm"), style = north_arrow_fancy_orienteering) +
+  scale_fill_manual(name = "Nombre d'occurrences",
+                    values = c("0 occurrences" = "white",
+                               "1-10 occurrences" = "#FFD700",
+                               "11-50 occurrences" = "#FF4500",
+                               "51-100 occurrences" = "#FF0000",
+                               "101-125 occurrences" = "#FFA500",
+                               "Plus de 125 occurrences" = "#8B0000"),
+                    labels = c("0 occurrences", "1-10 occurrences", "11-50 occurrences", "51-100 occurrences", "101-125 occurrences", "Plus de 125 occurrences")) +
+  theme(axis.text = element_text(size = 14, color = "black"), 
+        axis.title = element_blank(), 
+        legend.title = element_text(size = 16), 
+        legend.text = element_text(size = 14), 
+        legend.position = "right") +
+  # Ajouter des annotations pour les pays avec AREA > 2
+  geom_text(data = country_labels, aes(X_label, Y_label, label = label), size = 4, hjust = 0, vjust = 0, color = "black") +
+  geom_segment(data = country_labels, aes(x = X, y = Y, xend = X_label, yend = Y_label), color = "black")
+
+# Sauvegarder l'image
+ggsave("Sampling_effort_image2.png", width = 11.69, height = 8.27, dpi = 600)
+
+Modifications apportées :
+
+    Remplacement des abréviations des pays par leurs noms complets.
+    Calcul des positions pour placer les étiquettes en dehors des frontières.
+    Ajout de segments pour relier les étiquettes aux pays.
+
+Assurez-vous que le package sf est correctement installé et chargé, et que les fichiers de données sont bien accessibles aux chemins spécifiés.
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+Bonjour Chat, j'aimerais créer un code R me permettant de visualiser un shp. Il faudrait juste ajouter en bleu clair presque transparent les limites de la zone d'étude et les pays différents en prenant en compte que les coordonnées suivantes (xlim = c(6, 18), ylim = c(-7, 7)).
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+ChatGPT
+
+Bonjour ! Pour visualiser vos fichiers shapefiles avec les spécifications que vous avez fournies, vous pouvez utiliser le package ggplot2 en combinaison avec le package sf pour lire et manipuler les données géographiques en R. Voici un exemple de code R qui fait ce que vous avez demandé :
+
+    Lire les shapefiles.
+    Tracer les pays avec des limites en bleu clair et transparentes.
+    Tracer la zone d'étude en bleu clair et transparent.
+    Définir les limites des axes (xlim et ylim).
+
+Voici le code :
+
+r
+
+# Charger les packages nécessaires
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en bleu clair et transparent
+  geom_sf(data = africapolitical, fill = NA, color = "lightblue", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent
+  geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains et zone d'étude") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Explication du code :
+
+    Chargement des packages :
+        sf est utilisé pour manipuler les données spatiales.
+        ggplot2 est utilisé pour la visualisation des données.
+
+    Lecture des shapefiles :
+        st_read() est utilisé pour lire les fichiers shapefiles.
+
+    Création du graphique :
+        geom_sf() est utilisé pour ajouter les couches géographiques au graphique.
+        fill = NA et color = "lightblue" pour tracer les limites des pays en bleu clair avec transparence.
+        fill = "lightblue" et color = NA pour remplir la zone d'étude en bleu clair avec transparence.
+        coord_sf() est utilisé pour définir les limites des axes.
+
+Vous pouvez adapter le titre, les labels ou d’autres éléments de personnalisation selon vos besoins. N’hésitez pas à me demander si vous avez besoin d’autres ajustements !
+Pourrais-tu juste mettre les limites des pays en noir et ne représenter que les limites de la zone d'étude. Peux-tu aussi ajouter les limites du Gabon en mauve. 
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+ChatGPT
+
+Bien sûr ! Voici comment ajuster le code pour répondre à vos besoins :
+
+    Tracer les limites des pays en noir.
+    Afficher uniquement les limites de la zone d'étude en bleu clair et transparent.
+    Ajouter les limites du Gabon en mauve.
+
+Voici le code mis à jour :
+
+r
+
+# Charger les packages nécessaires
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent
+  geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude et limites du Gabon") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Explication des modifications :
+
+    Limites des pays en noir :
+        color = "black" dans geom_sf() pour africapolitical pour les limites des pays.
+
+    Limites de la zone d'étude en bleu clair :
+        Le code reste le même pour zone avec fill = "lightblue" et color = NA.
+
+    Limites du Gabon en mauve :
+        geom_sf() avec les données du Gabon et color = "purple" pour les limites du Gabon.
+        size = 0.8 ajuste l'épaisseur des lignes des limites du Gabon.
+
+Ce code devrait vous donner une carte où les limites des pays sont en noir, les limites de la zone d'étude sont en bleu clair, et les limites du Gabon sont en mauve. Vous pouvez ajuster les couleurs et les tailles selon vos préférences.
+Parfait, pourrais-tu rajouter les limites des parcs nationnaux en vert foncé.
+parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+ChatGPT
+
+Bien sûr ! Vous pouvez ajouter les limites des parcs nationaux en vert foncé à la carte. Voici comment intégrer les données des parcs nationaux avec les autres éléments sur la carte :
+
+    Ajouter les limites des parcs nationaux en vert foncé.
+
+Voici le code mis à jour :
+
+r
+
+# Charger les packages nécessaires
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent
+  geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Explication des ajouts :
+
+    Limites des parcs nationaux en vert foncé :
+        geom_sf() est utilisé pour ajouter les données des parcs nationaux avec color = "darkgreen" pour les limites.
+        size = 0.6 ajuste l'épaisseur des lignes des limites des parcs nationaux.
+
+Ce code affichera vos données avec les limites des parcs nationaux en vert foncé sur la carte, tout en conservant les autres éléments que vous avez déjà ajoutés. Vous pouvez ajuster la couleur et l'épaisseur des lignes selon vos préférences pour une meilleure visibilité.
+> # Créer le graphique
+> ggplot() +
++   # Ajouter les pays avec des limites en noir
++   geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
++   # Ajouter la zone d'étude en bleu clair et transparent
++   geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
++   # Ajouter les limites du Gabon en mauve
++   geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
++   # Ajouter les limites des parcs nationaux en vert foncé
++   geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
++   # Définir les limites des axes
++   coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
++   # Ajouter un titre et des labels si besoin
++   ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
++   xlab("Longitude") +
++   ylab("Latitude")
+Erreur dans st_transform.sfc(X[[i]], ...) : 
+  cannot transform sfc object with missing crs
+ChatGPT
+
+L'erreur que vous rencontrez, cannot transform sfc object with missing crs, indique que vos objets spatiaux n'ont pas de système de coordonnées (CRS) défini. Avant de les visualiser ensemble, il est essentiel que tous les objets spatiaux aient le même CRS.
+
+Voici comment vous pouvez résoudre ce problème :
+
+    Vérifier les CRS des shapefiles.
+    Assurer que tous les shapefiles ont le même CRS.
+    Transformer les CRS si nécessaire.
+
+Voici comment adapter le code pour gérer le CRS :
+
+r
+
+# Charger les packages nécessaires
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+
+# Vérifier les CRS des shapefiles
+crs_africapolitical <- st_crs(africapolitical)
+crs_zone <- st_crs(zone)
+crs_Gabon <- st_crs(Gabon)
+crs_parcs <- st_crs(parcs)
+
+# Afficher les CRS pour vérifier s'ils sont les mêmes
+print(crs_africapolitical)
+print(crs_zone)
+print(crs_Gabon)
+print(crs_parcs)
+
+# Définir un CRS commun si nécessaire (ici, EPSG:4326 comme exemple)
+# Remplacez "EPSG:4326" par le CRS approprié pour vos données
+common_crs <- st_crs(4326)
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(crs_africapolitical, common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(crs_zone, common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(crs_Gabon, common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(crs_parcs, common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent
+  geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Explications :
+
+    Vérification des CRS :
+        Utilisez st_crs() pour obtenir le CRS de chaque shapefile.
+        Comparez les CRS pour vérifier s'ils sont identiques.
+
+    Définition d'un CRS commun :
+        Vous pouvez choisir un CRS commun approprié pour vos données. Ici, j'ai utilisé EPSG:4326 (WGS 84) comme exemple. Assurez-vous que ce CRS est approprié pour vos données ou remplacez-le par le CRS correct.
+
+    Transformation des CRS :
+        Utilisez st_transform() pour transformer les shapefiles au CRS commun.
+
+Ce code garantit que tous vos shapefiles sont dans le même CRS avant de les visualiser ensemble. Vous devriez maintenant pouvoir créer la carte sans rencontrer de problème de CRS.
+> if (!identical(crs_parcs, common_crs)) parcs <- st_transform(parcs, common_crs)
+Erreur dans st_transform.sfc(st_geometry(x), crs, ...) : 
+  cannot transform sfc object with missing crs
+ChatGPT
+
+L'erreur que vous rencontrez, cannot transform sfc object with missing crs, suggère que certains de vos objets spatiaux, y compris parcs, n'ont pas de système de coordonnées (CRS) défini. Cela peut se produire si le CRS n'est pas attribué au shapefile ou si le shapefile a été mal importé.
+
+Voici les étapes pour résoudre ce problème :
+1. Vérifiez les CRS des shapefiles
+
+Assurez-vous que les shapefiles ont un CRS défini. Vous pouvez utiliser st_crs() pour vérifier cela :
+
+r
+
+# Vérifiez les CRS des shapefiles
+crs_africapolitical <- st_crs(africapolitical)
+crs_zone <- st_crs(zone)
+crs_Gabon <- st_crs(Gabon)
+crs_parcs <- st_crs(parcs)
+
+print(crs_africapolitical)
+print(crs_zone)
+print(crs_Gabon)
+print(crs_parcs)
+
+2. Définir ou attribuer un CRS si manquant
+
+Si crs_parcs ou tout autre shapefile affiche NA pour le CRS, vous devrez définir le CRS manuellement. Si vous connaissez le CRS correct, vous pouvez l'assigner en utilisant st_set_crs() :
+
+r
+
+# Définir un CRS si le CRS est manquant
+# Exemple: EPSG:4326 (WGS 84)
+if (is.na(crs_africapolitical$epsg)) africapolitical <- st_set_crs(africapolitical, 4326)
+if (is.na(crs_zone$epsg)) zone <- st_set_crs(zone, 4326)
+if (is.na(crs_Gabon$epsg)) Gabon <- st_set_crs(Gabon, 4326)
+if (is.na(crs_parcs$epsg)) parcs <- st_set_crs(parcs, 4326)
+
+3. Transformer les shapefiles au CRS commun
+
+Une fois que tous les shapefiles ont un CRS défini, vous pouvez les transformer au CRS commun si nécessaire :
+
+r
+
+# Définir un CRS commun (ici EPSG:4326 comme exemple)
+common_crs <- st_crs(4326)
+
+# Transformer les shapefiles au CRS commun
+if (!identical(crs_africapolitical, common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(crs_zone, common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(crs_Gabon, common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(crs_parcs, common_crs)) parcs <- st_transform(parcs, common_crs)
+
+4. Re-créez le graphique
+
+Une fois que tous vos shapefiles ont le CRS défini et sont transformés au CRS commun, vous pouvez recréer votre graphique :
+
+r
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent
+  geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Explication des modifications :
+
+    Définir ou attribuer un CRS : Assurez-vous que chaque shapefile a un CRS valide avant de procéder à la transformation.
+    Transformer au CRS commun : Transformez tous les shapefiles au CRS commun si leurs CRS initiaux diffèrent.
+
+En suivant ces étapes, vous devriez pouvoir résoudre le problème lié au CRS et visualiser vos données correctement.
+> africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Reading layer africapolitical' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\africapolitical.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 681 features and 8 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -17.53524 ymin: -34.83983 xmax: 51.41303 ymax: 37.54393
+Geodetic CRS:  WGS 84
+> zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Reading layer Contour_Zone_Interet' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\Contour_Zone_Interet.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 1 feature and 1 field
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 7.723095 ymin: -5.978388 xmax: 16.42309 ymax: 6.621612
+Geodetic CRS:  WGS 84
+> Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+Reading layer GAB_Contour' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\GAB_Contour.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 28 features and 3 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 132564 ymin: 61834.4 xmax: 781492.6 ymax: 756235.2
+Projected CRS: Gtm_Gabon
+> parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+Reading layer ParcNationalGTM' from data source 
+  D:\Mémoire_documents_supps\Mémoire_Luane_documents\Data\Données spatiales\Aires protégées\Parcs Nationaux\ParcNationalGTM.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 14 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 196261.2 ymin: 50642.33 xmax: 755872.9 ymax: 752809.5
+CRS:           NA
+ChatGPT
+
+Il semble que vous ayez plusieurs shapefiles avec des systèmes de coordonnées (CRS) différents, et certains n'ont pas de CRS défini. Voici comment résoudre ces problèmes pour que tous vos shapefiles puissent être visualisés ensemble :
+Étapes à Suivre
+
+    Définir un CRS pour le shapefile parcs
+    Transformer les shapefiles au même CRS
+    Créer le graphique
+
+Définir un CRS pour le shapefile parcs
+
+Le shapefile parcs n'a pas de CRS défini (CRS: NA). Vous devez lui attribuer un CRS approprié. D'après les informations fournies pour les autres shapefiles, il semble que vous utilisez principalement le CRS WGS 84 (EPSG:4326). Assumons que le CRS pour parcs devrait être également EPSG:4326. Vous pouvez définir le CRS manuellement comme suit :
+
+r
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+
+# Définir le CRS pour le shapefile `parcs` (supposons EPSG:4326)
+parcs <- st_set_crs(parcs, 4326)
+
+# Vérifier les CRS des shapefiles après modification
+crs_africapolitical <- st_crs(africapolitical)
+crs_zone <- st_crs(zone)
+crs_Gabon <- st_crs(Gabon)
+crs_parcs <- st_crs(parcs)
+
+print(crs_africapolitical)
+print(crs_zone)
+print(crs_Gabon)
+print(crs_parcs)
+
+# Définir un CRS commun (ici EPSG:4326 comme exemple)
+common_crs <- st_crS(4326)
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(crs_africapolitical, common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(crs_zone, common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(crs_Gabon, common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(crs_parcs, common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent
+  geom_sf(data = zone, fill = "lightblue", color = NA, alpha = 0.5) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Explication des Modifications :
+
+    Définir un CRS pour parcs :
+        Utilisez st_set_crs() pour attribuer un CRS à parcs si le CRS est manquant.
+        Ici, nous avons supposé EPSG:4326 (WGS 84), mais vous devez ajuster cela selon les besoins réels de vos données.
+
+    Transformer les shapefiles au même CRS :
+        Assurez-vous que tous les shapefiles utilisent le même CRS avant de les visualiser ensemble. La transformation est effectuée avec st_transform().
+
+    Créer le graphique :
+        Utilisez ggplot2 pour créer la carte avec les shapefiles ayant le même CRS.
+
+En appliquant ces étapes, vous devriez être en mesure de visualiser correctement vos shapefiles sur la même carte. Si vous avez des informations spécifiques sur le CRS des shapefiles ou si le CRS de parcs est différent, vous devrez ajuster le code en conséquence.
+les parcs nationaux ne sont pas visibles et la zone est coloriée alors que je ne veux que les limites
+> parcs
+Simple feature collection with 14 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 196261.2 ymin: 50642.33 xmax: 755872.9 ymax: 752809.5
+Geodetic CRS:  WGS 84
+First 10 features:
+      ID              NOM   POINTS DISTANCE  LIM                       geometry
+1      0           MWAGNE 115043.*   188.82 <NA> POLYGON ((730221.1 554833.6...
+2      0 PLATEAUX BATEKES 202688.*   303.79 <NA> POLYGON ((698453.8 270814.5...
+3    125           AKANDA 53943.3*   142.58  Oui POLYGON ((241495.4 551564.2...
+4      0          PONGARA 96075.1*   339.48 <NA> POLYGON ((202128.3 516357.8...
+5     91  Cristal Mt seni 60783.4*   136.03  Oui POLYGON ((311689 602712.2, ...
+6  17940 Cristal - Mb\xe9 59463.6*   206.24  Oui POLYGON ((302434.8 556770.8...
+7    561          MINKEBE 753433.*   753.12 <NA> POLYGON ((555634.2 701992.4...
+8   1953           IVINDO 298688.*   425.45  Oui POLYGON ((592407.1 525493.7...
+9      0             LOPE 494410.*   473.15  Oui POLYGON ((432205.6 416539.3...
+10     0             WAKA 106374.*   186.97  Oui POLYGON ((383371.5 360229.4...
+ChatGPT
+
+Merci pour ces précisions. Voici comment vous pouvez ajuster le code pour corriger les problèmes que vous avez rencontrés :
+
+    Afficher uniquement les limites des parcs nationaux sans remplir les polygones.
+    Assurer la visibilité des parcs nationaux sur la carte.
+
+Ajustements à Apporter
+1. Définir un CRS pour les parcs nationaux
+
+Il semble que les parcs nationaux ont maintenant un CRS défini (WGS 84). Assurez-vous que le CRS des autres shapefiles est également bien défini pour éviter les problèmes de transformation.
+2. Afficher uniquement les limites des parcs nationaux
+
+Pour afficher seulement les limites des parcs nationaux sans les remplir, vous devez utiliser l'argument fill = NA dans geom_sf(). Vous pouvez également ajuster la couleur et l'épaisseur des limites pour garantir qu'elles soient visibles.
+Code R Mis à Jour
+
+r
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+
+# Définir le CRS pour les shapefiles
+common_crs <- st_crs(4326) # WGS 84
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africapolitical), common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Points Clés :
+
+    Affichage des Limites :
+        Pour les limites des parcs nationaux : Utilisez fill = NA pour ne pas remplir les polygones et color = "darkgreen" pour la couleur des limites.
+        Pour la zone d'étude : Utilisez fill = NA pour ne pas remplir la zone, avec color = "lightblue" pour les limites.
+
+    Visibilité des Parcs Nationaux :
+        Ajustez size dans geom_sf() pour les limites des parcs pour garantir que les limites sont visibles sur la carte.
+
+    Coordonnées et Limites :
+        Assurez-vous que les limites de coord_sf() (xlim et ylim) correspondent à la zone géographique d'intérêt pour la carte.
+
+En utilisant ce code, vous devriez être en mesure de visualiser correctement les limites des parcs nationaux sur la carte, ainsi que les autres éléments avec les ajustements nécessaires.
+> library(sf)
+> library(ggplot2)
+> 
+> # Lire les shapefiles
+> africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+Reading layer africapolitical' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\africapolitical.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 681 features and 8 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -17.53524 ymin: -34.83983 xmax: 51.41303 ymax: 37.54393
+Geodetic CRS:  WGS 84
+> zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Reading layer Contour_Zone_Interet' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\Contour_Zone_Interet.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 1 feature and 1 field
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 7.723095 ymin: -5.978388 xmax: 16.42309 ymax: 6.621612
+Geodetic CRS:  WGS 84
+> Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+Reading layer GAB_Contour' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\GAB_Contour.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 28 features and 3 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 132564 ymin: 61834.4 xmax: 781492.6 ymax: 756235.2
+Projected CRS: Gtm_Gabon
+> parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+Reading layer ParcNationalGTM' from data source 
+  D:\Mémoire_documents_supps\Mémoire_Luane_documents\Data\Données spatiales\Aires protégées\Parcs Nationaux\ParcNationalGTM.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 14 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 196261.2 ymin: 50642.33 xmax: 755872.9 ymax: 752809.5
+CRS:           NA
+> 
+> # Définir le CRS pour les shapefiles
+> common_crs <- st_crs(4326) # WGS 84
+> 
+> # Transformer les shapefiles au CRS commun si nécessaire
+> if (!identical(st_crs(africapolitical), common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+> if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+> if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+> if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+Erreur dans st_transform.sfc(st_geometry(x), crs, ...) : 
+  cannot transform sfc object with missing crs
+ChatGPT
+
+L'erreur que vous rencontrez, cannot transform sfc object with missing crs, indique que le shapefile parcs n'a pas de CRS défini, ce qui empêche sa transformation. Vous devez d'abord définir un CRS pour le shapefile parcs avant de pouvoir le transformer en un CRS commun.
+Voici les étapes à suivre :
+
+    Définir un CRS pour le shapefile parcs
+    Transformer les shapefiles au CRS commun
+    Créer le graphique
+
+1. Définir un CRS pour le shapefile parcs
+
+Vous avez mentionné que le shapefile parcs n'a pas de CRS défini (CRS: NA). Il faut donc lui attribuer un CRS approprié. Puisque les autres shapefiles utilisent WGS 84 (EPSG:4326), nous allons supposer que parcs devrait également utiliser ce CRS.
+
+Voici comment définir le CRS pour le shapefile parcs :
+
+r
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Parcs Nationaux/ParcNationalGTM.shp")
+
+# Définir le CRS pour le shapefile `parcs` (supposons EPSG:4326 comme exemple)
+parcs <- st_set_crs(parcs, 4326)
+
+# Vérifier les CRS des shapefiles après modification
+crs_africapolitical <- st_crs(africapolitical)
+crs_zone <- st_crs(zone)
+crs_Gabon <- st_crs(Gabon)
+crs_parcs <- st_crs(parcs)
+
+print(crs_africapolitical)
+print(crs_zone)
+print(crs_Gabon)
+print(crs_parcs)
+
+# Définir un CRS commun (ici EPSG:4326 comme exemple)
+common_crs <- st_crs(4326)
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(crs_africapolitical, common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(crs_zone, common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(crs_Gabon, common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(crs_parcs, common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Points Clés :
+
+    Définir un CRS pour parcs :
+        Nous avons supposé que le CRS pour parcs est EPSG:4326. Si ce n’est pas le cas, remplacez 4326 par le code EPSG approprié.
+
+    Vérifiez les CRS :
+        Après avoir défini le CRS, vérifiez les CRS des shapefiles pour vous assurer qu'ils sont tous bien définis et corrects.
+
+    Transformation au CRS commun :
+        Assurez-vous que tous les shapefiles utilisent le même CRS avant de les combiner dans une visualisation.
+
+Avec ces étapes, vous devriez pouvoir définir correctement le CRS pour le shapefile parcs, le transformer, et le visualiser correctement sur la carte.
+merci
+2/2
+ChatGPT
+
+Avec plaisir ! Si vous avez d'autres questions ou si vous avez besoin d'aide supplémentaire avec votre projet R, n'hésitez pas à demander. Bon travail avec vos données géospatiales et vos visualisations !
+Voilà mon code qui ne montre pas les parcs. C'est en projection GTM. Tu dois le reprojeter en WGS84
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS pour le shapefile parcs (supposons EPSG:4326 comme exemple)
+parcs <- st_set_crs(parcs, 4326)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+ChatGPT
+
+Pour corriger le problème et s'assurer que les parcs nationaux sont correctement affichés sur la carte, vous devez effectuer les étapes suivantes :
+
+    Définir le CRS correct pour les shapefiles : Assurez-vous que le shapefile des parcs a le CRS correct. Vous avez mentionné que le shapefile des parcs est en projection GTM (Gabon Tropical Mercator). Vous devez le transformer en WGS 84 (EPSG:4326) pour qu'il soit correctement aligné avec les autres données.
+
+    Transformer les shapefiles en CRS commun : Assurez-vous que tous les shapefiles sont projetés dans le même CRS avant de les visualiser ensemble.
+
+Code Révisé
+
+Voici le code ajusté pour définir le CRS des parcs nationaux et les transformer en WGS 84 :
+
+r
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africapolitical), common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels si besoin
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+Points à Vérifier :
+
+    Définir le CRS pour les Parcs :
+        Assurez-vous que le CRS 31982 (Gabon Tropical Mercator) est bien celui utilisé. Vous pouvez ajuster le code si vous avez un autre CRS spécifique pour les parcs.
+
+    Transformation en CRS Commun :
+        Les shapefiles sont transformés au CRS commun (EPSG:4326) pour une visualisation correcte.
+
+    Vérifiez les Limites :
+        Vérifiez les limites définies dans coord_sf() pour vous assurer qu'elles couvrent la zone d'intérêt.
+
+En suivant ces étapes, vous devriez pouvoir corriger l'affichage des parcs nationaux et les visualiser correctement avec les autres couches de votre carte.
+est-il possible d'y ajouter une légende?
+ChatGPT
+
+Oui, il est tout à fait possible d'ajouter une légende à votre carte en utilisant ggplot2. La légende peut aider à identifier les différentes couches de données sur la carte. Pour cela, vous pouvez utiliser les esthétiques fill et color dans ggplot2 et les fonctions associées pour personnaliser la légende.
+
+Voici comment vous pouvez ajouter une légende à votre carte en spécifiant des labels pour chaque couche :
+
+r
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africapolitical), common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Préparer les données pour la légende
+africapolitical$type <- "Pays"
+zone$type <- "Zone d'étude"
+Gabon$type <- "Limites du Gabon"
+parcs$type <- "Parcs Nationaux"
+
+# Combiner les données en une seule
+combined_data <- rbind(
+  st_set_geometry(africapolitical, NULL) %>% mutate(source = "Pays"),
+  st_set_geometry(zone, NULL) %>% mutate(source = "Zone d'étude"),
+  st_set_geometry(Gabon, NULL) %>% mutate(source = "Limites du Gabon"),
+  st_set_geometry(parcs, NULL) %>% mutate(source = "Parcs Nationaux")
+)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = "Limites du Gabon")) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende", values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Explication des modifications :
+
+    Ajouter une colonne type :
+        Chaque jeu de données reçoit une étiquette spécifique à ajouter à la légende.
+
+    Combiner les données :
+        La fonction rbind() est utilisée pour combiner les données, mais ici, c'est surtout pour illustrer comment préparer des données pour la légende. Le code final est structuré pour ajouter les couches une par une avec les étiquettes appropriées.
+
+    Ajouter aes(linetype = "label") :
+        La fonction aes(linetype = "label") est utilisée pour lier les données à la légende.
+
+    Ajouter scale_linetype_manual() :
+        Définit les types de lignes (ou couleurs) et labels pour la légende.
+
+    theme(legend.position = "right") :
+        Positionne la légende sur le côté droit du graphique.
+
+Vous pouvez ajuster les valeurs et les labels dans scale_linetype_manual() pour mieux correspondre à vos préférences. Assurez-vous que les noms et labels utilisés correspondent aux couches que vous avez ajoutées.
+> combined_data <- rbind(
++   st_set_geometry(africapolitical, NULL) %>% mutate(source = "Pays"),
++   st_set_geometry(zone, NULL) %>% mutate(source = "Zone d'étude"),
++   st_set_geometry(Gabon, NULL) %>% mutate(source = "Limites du Gabon"),
++   st_set_geometry(parcs, NULL) %>% mutate(source = "Parcs Nationaux")
++ )
+Erreur dans rbind(deparse.level, ...) : 
+  les nombres de colonnes des arguments ne correspondent pas
+ChatGPT
+
+L'erreur que vous avez rencontrée avec rbind() est due à un nombre de colonnes incompatible entre les différentes couches de données, ce qui est courant lorsqu'on combine des objets de type sf avec des structures de données différentes.
+
+Pour ajouter une légende correctement, vous n'avez pas besoin de combiner les données en une seule table avec rbind(). Vous pouvez plutôt spécifier les couches de données séparément dans ggplot2 et utiliser scale_* pour personnaliser la légende.
+
+Voici une approche simplifiée pour ajouter une légende en utilisant ggplot2 :
+Code Révisé avec Légende
+
+r
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africapolitical <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crS(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africapolitical), common_crs)) africapolitical <- st_transform(africapolitical, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africapolitical, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = "Limites du Gabon")) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Explication des Modifications :
+
+    Utilisation de aes(linetype = "label") :
+        L’argument aes(linetype = "label") est utilisé dans chaque couche pour indiquer à ggplot2 quel label utiliser dans la légende.
+
+    scale_linetype_manual() :
+        Cette fonction permet de définir les styles de ligne pour la légende. Les styles (values) doivent correspondre à ceux utilisés dans geom_sf(). Ici, nous utilisons des styles comme solid, dotted, etc. Vous pouvez ajuster ces styles selon vos besoins.
+
+    theme(legend.position = "right") :
+        Positionne la légende sur le côté droit du graphique. Vous pouvez changer "right" à "bottom" ou "top" si vous préférez une autre position.
+
+Ce code devrait afficher correctement la légende pour chaque couche de données sur la carte. Si vous avez d'autres questions ou des ajustements supplémentaires, n'hésitez pas à demander !
+c'est quasi parfait, j'ai quelques petites modifs.
+
+- Est-il possible d'écrire les pays (1 seul fois par pays) qui sont trouvables dans la colonne 'COUNTRY' de 'africa' ?
+- Il faudrait remplacer le 'gabon' par la valeur "Gabon" trouvée dans la colonne 'COUNTRY' de 'africa'
+
+library(sf)
+library(ggplot2)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = "Limites du Gabon")) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
+  theme(legend.position = "right")
+4/5
+ChatGPT
+
+Pour personnaliser le graphique avec les noms des pays et pour remplacer le label "Gabon" par le nom exact trouvé dans la colonne COUNTRY de africa, vous pouvez suivre ces étapes :
+
+    Ajouter les noms des pays : Utilisez geom_sf_text() pour afficher les noms des pays directement sur la carte, en vous assurant que chaque nom de pays n'est affiché qu'une seule fois.
+
+    Remplacer le label du Gabon : Filtrez africa pour obtenir le nom exact du Gabon et utilisez-le dans la légende.
+
+Voici comment modifier votre code pour intégrer ces modifications :
+
+r
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Trouver le nom exact du Gabon dans la colonne 'COUNTRY'
+gabon_name <- africa %>%
+  filter(COUNTRY == "Gabon") %>%
+  pull(COUNTRY) %>%
+  unique()
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter les noms des pays
+  geom_sf_text(data = africa, aes(label = COUNTRY), size = 2, color = "black", check_overlap = TRUE) +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = paste0("Limites du ", gabon_name))) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", paste0("Limites du ", gabon_name), "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Explications des Modifications :
+
+    Ajouter les noms des pays :
+        Utilisez geom_sf_text() pour afficher les noms des pays. aes(label = COUNTRY) spécifie que vous voulez que chaque pays soit étiqueté avec le nom trouvé dans la colonne COUNTRY. Le paramètre check_overlap = TRUE aide à éviter que les labels se chevauchent.
+
+    Remplacer le label du Gabon :
+        Extraire le nom du Gabon de la colonne COUNTRY et utiliser cette valeur dans la légende avec paste0("Limites du ", gabon_name).
+
+Ces modifications devraient résoudre vos besoins pour afficher correctement les noms des pays et personnaliser la légende en fonction du nom exact du Gabon. N'hésitez pas à ajuster les tailles de texte et les autres paramètres de style selon vos préférences.
+est-il possible d'avoir les nom des zones des pays que si 'Shape_STLe' a une valeur plus grande que 5 et aussi que les noms soient au milieu 
+ChatGPT
+
+Oui, il est tout à fait possible d'afficher les noms des pays uniquement si la valeur de Shape_STLe est supérieure à 5, et de les positionner au centre des zones des pays. Voici comment vous pouvez adapter votre code pour y parvenir :
+
+    Filtrer les pays avec une valeur de Shape_STLe supérieure à 5.
+    Positionner les noms au centre des zones des pays en utilisant les coordonnées du centroid.
+
+Voici le code modifié pour répondre à ces besoins :
+
+r
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Trouver le nom exact du Gabon dans la colonne 'COUNTRY'
+gabon_name <- africa %>%
+  filter(COUNTRY == "Gabon") %>%
+  pull(COUNTRY) %>%
+  unique()
+
+# Filtrer les pays avec Shape_STLe > 5
+africa_filtered <- africa %>%
+  filter(Shape_STLe > 5) %>%
+  st_centroid() %>%
+  mutate(label = COUNTRY)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter les noms des pays filtrés au centre
+  geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = paste0("Limites du ", gabon_name))) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", paste0("Limites du ", gabon_name), "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Explications :
+
+    Filtrage des pays :
+        africa_filtered <- africa %>% filter(Shape_STLe > 5) %>% st_centroid() %>% mutate(label = COUNTRY) :
+            Cette ligne filtre les pays pour ne conserver que ceux dont Shape_STLe est supérieur à 5.
+            st_centroid() calcule le centre géographique de chaque pays filtré pour y placer le label.
+            mutate(label = COUNTRY) ajoute une colonne label contenant les noms des pays.
+
+    Positionner les noms des pays au centre :
+        geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") :
+            Affiche les noms des pays filtrés à leurs centroids.
+
+Avec ces modifications, le graphique affichera les noms des pays uniquement pour ceux qui répondent à la condition, et les noms seront positionnés au centre des pays respectifs. N'hésitez pas à ajuster la taille du texte ou d'autres paramètres pour améliorer la lisibilité selon vos besoins.
+> africa_filtered <- africa %>%
++   filter(Shape_STLe > 5) %>%
++   st_centroid() %>%
++   mutate(label = COUNTRY)
+Avis : st_centroid assumes attributes are constant over geometries
+Erreur dans wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : 
+  Loop 0 is not valid: Edge 0 has duplicate vertex with edge 28
+ChatGPT
+
+Il semble que vous rencontriez une erreur lors du calcul des centroids, probablement en raison de problèmes avec les géométries des données. Voici une approche alternative pour résoudre ce problème et afficher les noms des pays au centre, tout en assurant que les géométries sont valides.
+Étapes :
+
+    Assurer la validité des géométries.
+    Calculer les centroids pour les pays filtrés.
+    Ajouter les labels au centre des pays.
+
+Voici le code révisé :
+
+r
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Assurer la validité des géométries
+africa <- st_make_valid(africa)
+
+# Trouver le nom exact du Gabon dans la colonne 'COUNTRY'
+gabon_name <- africa %>%
+  filter(COUNTRY == "Gabon") %>%
+  pull(COUNTRY) %>%
+  unique()
+
+# Filtrer les pays avec Shape_STLe > 5 et assurer la validité des géométries
+africa_filtered <- africa %>%
+  filter(Shape_STLe > 5) %>%
+  st_make_valid() %>%
+  st_centroid() %>%
+  mutate(label = COUNTRY)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter les noms des pays filtrés au centre
+  geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = paste0("Limites du ", gabon_name))) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", paste0("Limites du ", gabon_name), "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Explications des modifications :
+
+    Assurer la validité des géométries :
+        africa <- st_make_valid(africa) : Cette fonction corrige les géométries invalides avant de procéder à l'opération de centroid.
+
+    Calcul des centroids :
+        st_centroid() : Calcule le centroid des géométries après avoir assuré leur validité.
+
+    Placement des labels :
+        geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") : Ajoute les labels des pays filtrés aux centroids.
+
+Ces ajustements devraient résoudre les erreurs liées aux géométries et permettre d'afficher correctement les noms des pays au centre des zones des pays.
+Voila le code est presque fini, j'aimerais juste que le contour mauve du Gabon se fasse grâce à à 'africa' avec la valeur "gabon" de la colonne 'COUNTRY'
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Assurer la validité des géométries
+africa <- st_make_valid(africa)
+
+# Trouver le nom exact du Gabon dans la colonne 'COUNTRY'
+gabon_name <- africa %>%
+  filter(COUNTRY == "Gabon") %>%
+  pull(COUNTRY) %>%
+  unique()
+
+# Filtrer les pays avec Shape_STLe > 5 et assurer la validité des géométries
+africa_filtered <- africa %>%
+  filter(Shape_STLe > 8) %>%
+  filter(Land_Type == "Primary land") %>%
+  st_make_valid() %>%
+  st_centroid() %>%
+  mutate(label = COUNTRY)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter les noms des pays filtrés au centre
+  geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve
+  geom_sf(data = Gabon, fill = NA, color = "purple", size = 0.8, aes(linetype = paste0("Limites du ", gabon_name))) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", paste0("Limites du ", gabon_name), "Parcs Nationaux")) +
+  theme(legend.position = "right")
+ChatGPT
+
+Pour utiliser les données de la colonne COUNTRY de africa pour définir les limites du Gabon et les afficher en mauve, vous devez extraire les données pour le Gabon à partir de africa, puis les ajouter au graphique. Voici comment procéder :
+
+    Extraire le sous-ensemble des données pour le Gabon depuis africa.
+    Utiliser ces données pour dessiner les limites du Gabon en mauve.
+    Mettre à jour la légende en conséquence.
+
+Voici le code mis à jour pour ces ajustements :
+
+r
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Assurer la validité des géométries
+africa <- st_make_valid(africa)
+
+# Extraire les données pour le Gabon à partir de `africa`
+gabon_data <- africa %>%
+  filter(COUNTRY == "Gabon")
+
+# Filtrer les pays avec Shape_STLe > 5 et assurer la validité des géométries
+africa_filtered <- africa %>%
+  filter(Shape_STLe > 8) %>%
+  filter(Land_Type == "Primary land") %>%
+  st_make_valid() %>%
+  st_centroid() %>%
+  mutate(label = COUNTRY)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
+  # Ajouter les noms des pays filtrés au centre
+  geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
+  # Ajouter les limites du Gabon en mauve en utilisant les données de `africa`
+  geom_sf(data = gabon_data, fill = NA, color = "purple", size = 0.8, aes(linetype = "Limites du Gabon")) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_linetype_manual(name = "Légende",
+                        values = c("solid", "dotted", "dashed", "dotdash"),
+                        labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Explications des modifications :
+
+    Extraction des données pour le Gabon :
+        gabon_data <- africa %>% filter(COUNTRY == "Gabon") : Filtre les données pour le Gabon à partir du shapefile africa.
+
+    Utilisation des données du Gabon :
+        geom_sf(data = gabon_data, fill = NA, color = "purple", size = 0.8, aes(linetype = "Limites du Gabon")) : Utilise les données filtrées pour dessiner les limites du Gabon en mauve.
+
+    Mise à jour de la légende :
+        Les labels de la légende sont mis à jour pour refléter les nouvelles données utilisées.
+
+Cela devrait afficher correctement les limites du Gabon en utilisant les données filtrées de africa et mettre à jour la légende en conséquence.
+2/2
+> ggplot() +
++   # Ajouter les pays avec des limites en noir
++   geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5, aes(linetype = "Pays")) +
++   # Ajouter les noms des pays filtrés au centre
++   geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
++   # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
++   geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8, aes(linetype = "Zone d'étude")) +
++   # Ajouter les limites du Gabon en mauve en utilisant les données de africa
++   geom_sf(data = gabon_data, fill = NA, color = "purple", size = 0.8, aes(linetype = "Limites du Gabon")) +
++   # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
++   geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6, aes(linetype = "Parcs Nationaux")) +
++   # Définir les limites des axes
++   coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
++   # Ajouter un titre et des labels
++   ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
++   xlab("Longitude") +
++   ylab("Latitude") +
++   # Ajouter la légende
++   scale_linetype_manual(name = "Légende",
++                         values = c("black", "lightblue", "purple", "darkgreen"),
++                         labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
++   theme(legend.position = "right")
+Avis dans st_point_on_surface.sfc(sf::st_zm(x)) :
+  st_point_on_surface may not give correct results for longitude/latitude data
+Erreur dans grid.Call.graphics(C_path, x$x, x$y, index, switch(x$rule, winding = 1L,  : 
+  nombre hexadécimal incorrect dans 'color' ou 'lty'
+ChatGPT
+
+Il semble y avoir une confusion dans l'utilisation des valeurs de linetype et color dans la fonction scale_linetype_manual(). Les valeurs c("black", "lightblue", "purple", "darkgreen") sont des couleurs et non des types de lignes (linetype). La fonction scale_linetype_manual() attend des valeurs correspondant à des styles de lignes comme "solid", "dotted", etc.
+
+Voici comment vous pouvez corriger cela :
+
+    Utiliser scale_color_manual() pour définir les couleurs.
+    Utiliser scale_linetype_manual() pour définir les styles de lignes, si nécessaire.
+
+Code Mis à Jour
+
+r
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Assurer la validité des géométries
+africa <- st_make_valid(africa)
+
+# Extraire les données pour le Gabon à partir de `africa`
+gabon_data <- africa %>%
+  filter(COUNTRY == "Gabon")
+
+# Filtrer les pays avec Shape_STLe > 5 et assurer la validité des géométries
+africa_filtered <- africa %>%
+  filter(Shape_STLe > 8) %>%
+  filter(Land_Type == "Primary land") %>%
+  st_make_valid() %>%
+  st_centroid() %>%
+  mutate(label = COUNTRY)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter les noms des pays filtrés au centre
+  geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8) +
+  # Ajouter les limites du Gabon en mauve en utilisant les données de `africa`
+  geom_sf(data = gabon_data, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende
+  scale_color_manual(name = "Légende",
+                     values = c("black", "lightblue", "purple", "darkgreen"),
+                     labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
+  theme(legend.position = "right")
+
+Points Clés :
+
+    Utilisation de scale_color_manual() :
+        Pour spécifier les couleurs associées à chaque élément dans la légende.
+        Les couleurs sont spécifiées par values et les labels par labels.
+
+    Suppression de scale_linetype_manual() :
+        Ce code ne spécifie pas de styles de lignes différents, donc nous utilisons uniquement scale_color_manual() pour gérer la couleur des éléments.
+
+Cela devrait résoudre le problème lié aux erreurs et vous donner un graphique avec les limites du Gabon correctes et les légendes appropriées.
+je n'ai pas besoin de type de lignes, je veux des lignes complètes à chaque fois, juste les couleurs importent mais fait attention à ce que la légende soit toujours visible
+2/2
+ChatGPT
+
+D'accord ! Pour des lignes complètes (lignes solides) sans types de lignes spécifiques, nous devons uniquement gérer les couleurs pour la légende. Vous pouvez utiliser scale_color_manual() pour gérer la couleur et scale_linetype_manual() avec une valeur unique (comme "solid") pour les lignes.
+
+Voici la version mise à jour de votre code :
+
+r
+
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Lire les shapefiles
+africa <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/AfricanCountries.shp")
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Gabon <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_Contour.shp")
+parcs <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/GAB_AP_2013.shp")
+
+# Définir le CRS des shapefiles
+crs_parcs <- st_crs(parcs)
+if (is.na(crs_parcs$epsg)) {
+  # Supposons que les parcs sont en projection GTM (Gabon Tropical Mercator)
+  st_crs(parcs) <- 31982 # EPSG code pour GTM - Gabon
+}
+
+# Définir le CRS commun (WGS 84)
+common_crs <- st_crs(4326) # EPSG:4326
+
+# Transformer les shapefiles au CRS commun si nécessaire
+if (!identical(st_crs(africa), common_crs)) africa <- st_transform(africa, common_crs)
+if (!identical(st_crs(zone), common_crs)) zone <- st_transform(zone, common_crs)
+if (!identical(st_crs(Gabon), common_crs)) Gabon <- st_transform(Gabon, common_crs)
+if (!identical(st_crs(parcs), common_crs)) parcs <- st_transform(parcs, common_crs)
+
+# Assurer la validité des géométries
+africa <- st_make_valid(africa)
+
+# Extraire les données pour le Gabon à partir de `africa`
+gabon_data <- africa %>%
+  filter(COUNTRY == "Gabon")
+
+# Filtrer les pays avec Shape_STLe > 5 et assurer la validité des géométries
+africa_filtered <- africa %>%
+  filter(Shape_STLe > 8) %>%
+  filter(Land_Type == "Primary land") %>%
+  st_make_valid() %>%
+  st_centroid() %>%
+  mutate(label = COUNTRY)
+
+# Créer le graphique
+ggplot() +
+  # Ajouter les pays avec des limites en noir
+  geom_sf(data = africa, fill = NA, color = "black", alpha = 0.5) +
+  # Ajouter les noms des pays filtrés au centre
+  geom_sf_text(data = africa_filtered, aes(label = label), size = 3, color = "black") +
+  # Ajouter la zone d'étude en bleu clair et transparent (sans remplissage)
+  geom_sf(data = zone, fill = NA, color = "lightblue", size = 0.8) +
+  # Ajouter les limites du Gabon en mauve en utilisant les données de `africa`
+  geom_sf(data = gabon_data, fill = NA, color = "purple", size = 0.8) +
+  # Ajouter les limites des parcs nationaux en vert foncé (sans remplissage)
+  geom_sf(data = parcs, fill = NA, color = "darkgreen", size = 0.6) +
+  # Définir les limites des axes
+  coord_sf(xlim = c(6, 18), ylim = c(-7, 7)) +
+  # Ajouter un titre et des labels
+  ggtitle("Carte des pays africains, zone d'étude, limites du Gabon et parcs nationaux") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  # Ajouter la légende avec des lignes solides
+  scale_color_manual(name = "Légende",
+                     values = c("black", "lightblue", "purple", "darkgreen"),
+                     labels = c("Pays", "Zone d'étude", "Limites du Gabon", "Parcs Nationaux")) +
+  scale_linetype_manual(name = "Légende",
+                        values = "solid",  # Toutes les lignes sont solides
+                        guide = "none") +  # Pas besoin de guide pour linetype ici
+  theme(legend.position = "right")
+
+Explications :
+
+    scale_color_manual() : Définit les couleurs pour chaque élément dans la légende.
+    scale_linetype_manual() : Utilisé pour définir le type de ligne, ici nous définissons tout comme "solid" et le guide est désactivé car nous n'utilisons pas de types de lignes différents.
+
+Cela devrait fournir une légende claire avec les couleurs appropriées et des lignes solides. La légende sera visible et bien définie à droite du graphique.
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+Bonjour chat, j'aimerais refaire un peu mieux le graphique que je me en pièce attachée. Il n'y a notamment pas assez d'espace entre les "ticks" et les labels. Voici le code R utilisé :
+
+correlogram = ncf::correlog(data[,"long"], data[,"lat"], data[,"indice"], na.rm=T, increment=10, resamp=0, latlon=T)
+dev.new(width=4.5, height=3)
+par(mar=c(2.2, 2.2, 1.5, 1.5))
+# Plot the correlogram
+plot(correlogram$mean.of.class[-1], correlogram$correlation[-1], ann=F, axes=F, lwd=0.2, cex=0.5, col=NA, ylim=c(-0.4, 1.0), xlim=c(0, 200))
+abline(h=0, lwd=0.5, col="red", lty=2)
+points(correlogram$mean.of.class[-1], correlogram$correlation[-1], lwd=0.2, cex=0.35, col="gray30")
+lines(correlogram$mean.of.class[-1], correlogram$correlation[-1], lwd=0.2, col="gray30")
+axis(side=1, pos=-0.4, lwd.tick=0.2, cex.axis=0.6, lwd=0.2, tck=-0.015, col.axis="gray30", mgp=c(0, -0.05, 0), at=seq(0, 500, 50))
+axis(side=2, pos=0, lwd.tick=0.2, cex.axis=0.6, lwd=0.2, tck=-0.015, col.axis="gray30", mgp=c(0, 0.18, 0), at=seq(-0.4, 1, 0.2))
+# Add axis labels
+title(xlab="distance (km)", cex.lab=0.7, mgp=c(0.3, 0, 0), col.lab="gray30")
+title(ylab="correlation", cex.lab=0.7, mgp=c(0.4, 0, 0), col.lab="gray30")
+ChatGPT
+
+Pour améliorer le graphique en R, nous pouvons ajuster les marges et l'espacement entre les "ticks" et les labels. Voici le code R modifié pour obtenir un meilleur résultat :
+
+r
+
+# Charger les bibliothèques nécessaires
+library(ncf)
+
+# Simulation des données (vous devriez utiliser vos propres données ici)
+set.seed(123)
+data <- data.frame(
+  long = runif(100, 0, 200),
+  lat = runif(100, 0, 200),
+  indice = rnorm(100)
+)
+
+# Calculer le corrélogramme
+correlogram <- ncf::correlog(data[,"long"], data[,"lat"], data[,"indice"], na.rm=TRUE, increment=10, resamp=0, latlon=TRUE)
+
+# Créer un nouveau graphique
+dev.new(width=4.5, height=3)
+par(mar=c(3.5, 3.5, 1.5, 1.5))  # Ajuster les marges
+
+# Tracer le corrélogramme
+plot(correlogram$mean.of.class[-1], correlogram$correlation[-1], ann=FALSE, axes=FALSE, lwd=0.2, cex=0.5, col=NA, ylim=c(-0.4, 1.0), xlim=c(0, 200))
+abline(h=0, lwd=0.5, col="red", lty=2)
+points(correlogram$mean.of.class[-1], correlogram$correlation[-1], lwd=0.2, cex=0.35, col="gray30")
+lines(correlogram$mean.of.class[-1], correlogram$correlation[-1], lwd=0.2, col="gray30")
+
+# Ajouter les axes avec plus d'espace entre les "ticks" et les labels
+axis(side=1, pos=-0.4, lwd.tick=0.2, cex.axis=0.6, lwd=0.2, tck=-0.015, col.axis="gray30", mgp=c(1, 0.2, 0), at=seq(0, 200, 50))
+axis(side=2, pos=0, lwd.tick=0.2, cex.axis=0.6, lwd=0.2, tck=-0.015, col.axis="gray30", mgp=c(1, 0.4, 0), at=seq(-0.4, 1, 0.2))
+
+# Ajouter les labels des axes
+title(xlab="distance (km)", cex.lab=0.7, mgp=c(1.5, 0, 0), col.lab="gray30")
+title(ylab="correlation", cex.lab=0.7, mgp=c(2, 0, 0), col.lab="gray30")
+
+Les changements principaux sont :
+
+    par(mar=c(3.5, 3.5, 1.5, 1.5)) : Augmentation des marges pour laisser plus de place aux labels des axes.
+    mgp paramètre pour axis et title : Modification pour ajuster l'espacement entre les "ticks" et les labels des axes.
+
+Utilisez ce code pour générer un nouveau graphique et vérifier si l'apparence est améliorée. Si vous avez d'autres ajustements en tête, faites-le moi savoir !
+Comment faire pour le sauvegarder avec ggsave
+3/3
+ChatGPT
+
+Pour enregistrer un graphique en utilisant ggsave, nous devons d'abord créer le graphique avec ggplot2, car ggsave est une fonction dédiée aux objets ggplot. Voici comment vous pouvez créer et enregistrer un graphique de corrélogramme avec ggplot2 :
+
+    Installez et chargez les packages nécessaires :
+
+r
+
+install.packages("ncf")
+install.packages("ggplot2")
+install.packages("dplyr")
+
+library(ncf)
+library(ggplot2)
+library(dplyr)
+
+    Calculez le corrélogramme et préparez les données pour ggplot2 :
+
+r
+
+# Simulation des données (vous devriez utiliser vos propres données ici)
+set.seed(123)
+data <- data.frame(
+  long = runif(100, 0, 200),
+  lat = runif(100, 0, 200),
+  indice = rnorm(100)
+)
+
+# Calculer le corrélogramme
+correlogram <- ncf::correlog(data[,"long"], data[,"lat"], data[,"indice"], na.rm=TRUE, increment=10, resamp=0, latlon=TRUE)
+
+# Préparer les données pour ggplot2
+correlogram_data <- data.frame(
+  distance = correlogram$mean.of.class[-1],
+  correlation = correlogram$correlation[-1]
+)
+
+    Créez le graphique avec ggplot2 :
+
+r
+
+# Créer le graphique avec ggplot2
+ggplot(correlogram_data, aes(x=distance, y=correlation)) +
+  geom_hline(yintercept=0, color="red", linetype="dashed") +
+  geom_point(color="gray30", size=1) +
+  geom_line(color="gray30", size=0.5) +
+  scale_x_continuous(limits=c(0, 200), breaks=seq(0, 200, 50)) +
+  scale_y_continuous(limits=c(-0.4, 1.0), breaks=seq(-0.4, 1.0, 0.2)) +
+  labs(x="distance (km)", y="correlation") +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size=10, color="gray30"),
+    axis.text = element_text(size=8, color="gray30"),
+    panel.grid.major = element_line(size=0.2, color="gray80"),
+    panel.grid.minor = element_line(size=0.1, color="gray90")
+  )
+
+    Enregistrez le graphique avec ggsave :
+
+r
+
+# Sauvegarder le graphique
+ggsave("correlogram.png", width=4.5, height=3)
+
+Ce code utilise ggplot2 pour créer un graphique de corrélogramme et ggsave pour le sauvegarder dans un fichier PNG. Vous pouvez ajuster les paramètres de ggsave pour changer le format, la résolution et d'autres caractéristiques du fichier sauvegardé.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ce code me fait des images presque top, les photos sont juste trop étirées dans la hauteur. 
+
+# Charger les packages
+library(gridExtra)
+library(magick)
+library(grid)
+
+# Définir le chemin vers le dossier contenant les images
+image_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Soil"
+
+# Lire les images
+image_files <- list.files(image_folder, full.names = TRUE)
+images <- lapply(image_files, image_read)
+
+# Optionnel: Redimensionner les images pour une meilleure netteté
+resize_image <- function(image, width, height) {
+  image_resize(image, paste0(width, "x", height, "!"))
+}
+
+# Redimensionner les images à une taille raisonnable pour l'affichage (par exemple, 1000x1000 pixels)
+resized_images <- lapply(images, resize_image, width = 1000, height = 1000)
+
+# Convertir les images redimensionnées en objets raster pour grid.arrange
+raster_images <- lapply(resized_images, as.raster)
+
+# Créer une liste de grobs (graphical objects) pour grid.arrange
+grob_images <- lapply(raster_images, grid::rasterGrob)
+
+# Définir le nombre de colonnes et de lignes pour afficher 8 images par page (4 colonnes, 2 lignes)
+ncol <- 3
+nrow <- 2
+
+# Diviser les images en groupes de 8 pour les pages
+n_images <- length(grob_images)
+images_split <- split(grob_images, ceiling(seq_along(grob_images) / (ncol * nrow)))
+
+# Créer un dossier de sortie pour les images combinées
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Combined"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# Sauvegarder les images en fichiers PNG avec 8 images par page
+for (i in seq_along(images_split)) {
+  output_file <- file.path(output_dir, paste0("combined_image", i, ".png"))
+  g <- arrangeGrob(grobs = images_split[[i]], ncol = ncol, nrow = nrow)
+  ggsave(output_file, plot = g, width = 28, height = 20, dpi = 300)  # Augmenter la taille et la résolution
+}
+
+print("Les images combinées ont été générées et sauvegardées avec succès.")
+ChatGPT
+
+Il semble que les images soient étirées en hauteur car la fonction ggsave utilise une taille de canevas (28x20) qui est disproportionnée par rapport au ratio des images. Voici quelques modifications pour éviter cet étirement.
+Solution
+
+L'idée est de maintenir le rapport d'aspect correct pour chaque image, en ajustant soit la taille de l'image à sauvegarder, soit en utilisant une taille fixe et proportionnelle pour les images redimensionnées. Vous pouvez ajuster les dimensions dans ggsave de manière à ce que le rapport largeur/hauteur soit compatible avec celui des images individuelles.
+Code Modifié
+
+r
+
+# Charger les packages
+library(gridExtra)
+library(magick)
+library(grid)
+
+# Définir le chemin vers le dossier contenant les images
+image_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Soil"
+
+# Lire les images
+image_files <- list.files(image_folder, full.names = TRUE)
+images <- lapply(image_files, image_read)
+
+# Optionnel: Redimensionner les images pour une meilleure netteté
+resize_image <- function(image, width, height) {
+  image_resize(image, paste0(width, "x", height, "!"))
+}
+
+# Redimensionner les images à une taille raisonnable pour l'affichage (par exemple, 1000x1000 pixels)
+resized_images <- lapply(images, resize_image, width = 1000, height = 1000)
+
+# Convertir les images redimensionnées en objets raster pour grid.arrange
+raster_images <- lapply(resized_images, as.raster)
+
+# Créer une liste de grobs (graphical objects) pour grid.arrange
+grob_images <- lapply(raster_images, grid::rasterGrob)
+
+# Définir le nombre de colonnes et de lignes pour afficher 6 images par page (3 colonnes, 2 lignes)
+ncol <- 3
+nrow <- 2
+
+# Diviser les images en groupes de 6 pour les pages
+n_images <- length(grob_images)
+images_split <- split(grob_images, ceiling(seq_along(grob_images) / (ncol * nrow)))
+
+# Créer un dossier de sortie pour les images combinées
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Combined"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# Sauvegarder les images en fichiers PNG avec 6 images par page
+for (i in seq_along(images_split)) {
+  output_file <- file.path(output_dir, paste0("combined_image", i, ".png"))
+  
+  # Définir la taille du canevas pour maintenir le ratio des images
+  g <- arrangeGrob(grobs = images_split[[i]], ncol = ncol, nrow = nrow)
+  
+  # Ajuster la taille pour préserver le rapport d'aspect (largeur/hauteur = 3/2)
+  ggsave(output_file, plot = g, width = 18, height = 12, dpi = 300)  # Taille ajustée pour un rapport 3:2
+}
+
+print("Les images combinées ont été générées et sauvegardées avec succès.")
+
+Explications
+
+    Taille de Canevas: La taille du canevas a été ajustée à 18x12, ce qui correspond à un rapport 3:2, plus proche de la taille de l'image.
+    Colonnes et Lignes: J'ai ajusté les colonnes et lignes à 3x2 pour correspondre à un nombre d'images et un rapport plus adapté. Vous pouvez ajuster cela selon vos besoins spécifiques.
+
+Résultat Attendu
+
+Les images devraient apparaître sans être étirées en hauteur, tout en remplissant correctement l'espace du canevas.
+les images sont tjrs trop étirées, il ne faut pas modifier la proportion des dimensions des images
+ChatGPT
+
+Pour résoudre le problème de l'étirement des images sans modifier leurs proportions, il faut s'assurer que les dimensions du canevas final où les images sont combinées respectent les proportions des images originales. Vous pouvez le faire en utilisant des tailles de canevas basées sur les dimensions réelles des images plutôt que de les forcer à s'adapter à une taille fixe.
+Solution: Conserver les proportions originales des images
+
+Une approche consiste à ajuster automatiquement la taille de chaque grille en fonction du nombre d'images et de leurs proportions pour s'assurer que les images ne sont pas déformées.
+
+Voici comment vous pouvez modifier votre code:
+
+r
+
+# Charger les packages
+library(gridExtra)
+library(magick)
+library(grid)
+
+# Définir le chemin vers le dossier contenant les images
+image_folder <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Soil"
+
+# Lire les images
+image_files <- list.files(image_folder, full.names = TRUE)
+images <- lapply(image_files, image_read)
+
+# Convertir les images en objets raster pour grid.arrange
+raster_images <- lapply(images, as.raster)
+
+# Créer une liste de grobs (graphical objects) pour grid.arrange
+grob_images <- lapply(raster_images, grid::rasterGrob)
+
+# Définir le nombre de colonnes et de lignes pour afficher les images
+ncol <- 3
+nrow <- 2
+
+# Diviser les images en groupes selon la disposition souhaitée (3 colonnes, 2 lignes)
+images_split <- split(grob_images, ceiling(seq_along(grob_images) / (ncol * nrow)))
+
+# Créer un dossier de sortie pour les images combinées
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/ACP/Images ACP/Combined"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# Sauvegarder les images en fichiers PNG en préservant les proportions
+for (i in seq_along(images_split)) {
+  output_file <- file.path(output_dir, paste0("combined_image", i, ".png"))
+  
+  # Créer la grille
+  g <- arrangeGrob(grobs = images_split[[i]], ncol = ncol, nrow = nrow)
+  
+  # Calculer la taille du canevas en fonction des proportions des images originales
+  image_width <- image_info(images[[1]])$width
+  image_height <- image_info(images[[1]])$height
+  
+  # Calculer la largeur et la hauteur totales du canevas en tenant compte du nombre de colonnes et de lignes
+  canvas_width <- image_width * ncol
+  canvas_height <- image_height * nrow
+  
+  # Sauvegarder l'image combinée avec les dimensions calculées
+  ggsave(output_file, plot = g, width = canvas_width/100, height = canvas_height/100, dpi = 300)
+}
+
+print("Les images combinées ont été générées et sauvegardées avec succès.")
+
+Explications:
+
+    Taille du Canevas Automatique: Le code calcule la taille du canevas final en fonction de la taille des images originales, en multipliant la largeur par le nombre de colonnes et la hauteur par le nombre de lignes.
+
+    Sauvegarde des Images: Les images sont sauvegardées en utilisant ces dimensions calculées, ce qui garantit que les proportions sont conservées.
+
+    Utilisation de ggsave: La fonction ggsave utilise les dimensions calculées pour sauvegarder l'image, évitant ainsi l'étirement.
+
+Résultat Attendu:
+
+Les images combinées devraient conserver leurs proportions originales, sans étirement, tout en étant correctement disposées sur le canevas final.

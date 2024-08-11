@@ -1,0 +1,73 @@
+https://chatgpt.com/share/38290327-e07f-4ab7-b362-250a0b4cb39b
+
+Bonjour j'aimerais créer plusieurs cartes de format 'projet QGIS' à partir des couches rasters au format .asc qui sont présentes dans ce dossier : C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\rasters.
+Il faudrait juste reprendre la carte suivante (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Map_test_python) et rajouter la couche raster. Il faudrait une carte par espèce. Il me faudrait donc un code python pour obtenir cela, je le lancerai ensuite dans l'outil python de qgis.
+ChatGPT
+
+Pour créer plusieurs cartes QGIS à partir des couches rasters au format .asc, vous pouvez utiliser le script Python suivant dans l'outil Python de QGIS. Ce script va parcourir tous les fichiers .asc dans le dossier spécifié, ajouter chaque couche raster à un projet QGIS existant, puis enregistrer chaque projet sous un nouveau nom basé sur le nom du fichier raster.
+
+python
+
+import os
+from qgis.core import QgsProject, QgsRasterLayer, QgsApplication
+
+# Initialise l'application QGIS sans interface utilisateur
+QgsApplication.setPrefixPath("C:/Program Files/QGIS 3.22.3", True)
+qgs = QgsApplication([], False)
+qgs.initQgis()
+
+# Définir les chemins
+raster_folder = r'C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\rasters'
+template_project_path = r'C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Map_test_python.qgz'
+output_folder = r'C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Generated_Maps'
+
+# Assurez-vous que le dossier de sortie existe
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+# Charger le projet template
+project = QgsProject.instance()
+project.read(template_project_path)
+
+# Parcourir tous les fichiers .asc dans le dossier
+for filename in os.listdir(raster_folder):
+    if filename.endswith('.asc'):
+        raster_path = os.path.join(raster_folder, filename)
+        layer_name = os.path.splitext(filename)[0]
+
+        # Créer une couche raster
+        raster_layer = QgsRasterLayer(raster_path, layer_name)
+
+        if not raster_layer.isValid():
+            print(f"Layer {layer_name} failed to load!")
+            continue
+
+        # Ajouter la couche raster au projet
+        project.addMapLayer(raster_layer)
+
+        # Enregistrer le projet avec un nouveau nom
+        output_project_path = os.path.join(output_folder, f"{layer_name}.qgz")
+        project.write(output_project_path)
+
+        # Retirer la couche pour éviter de l'ajouter plusieurs fois
+        project.removeMapLayer(raster_layer.id())
+
+# Nettoyer l'application QGIS
+qgs.exitQgis()
+
+Instructions
+
+    Installation de QGIS : Assurez-vous que QGIS est installé sur votre machine et que le chemin du préfixe est correct (C:/Program Files/QGIS 3.22.3 dans ce script).
+
+    Chemins d'accès :
+        raster_folder : Chemin du dossier contenant les fichiers .asc.
+        template_project_path : Chemin du projet QGIS de base que vous souhaitez utiliser comme modèle.
+        output_folder : Dossier où les nouveaux projets QGIS seront enregistrés.
+
+    Lancer le script :
+        Ouvrez QGIS.
+        Allez dans Plugins > Python Console puis cliquez sur Show Editor.
+        Collez le script dans l'éditeur Python.
+        Exécutez le script.
+
+Ce script charge chaque fichier .asc en tant que couche raster dans le projet QGIS, sauvegarde le projet sous un nouveau nom et retire la couche avant de passer à la suivante. Vous obtiendrez ainsi un projet QGIS distinct pour chaque fichier raster dans le dossier spécifié.

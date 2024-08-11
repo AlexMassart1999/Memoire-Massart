@@ -1,0 +1,1044 @@
+https://chatgpt.com/share/736d8e74-2cc6-4bf1-9753-8c6877c1ee51
+https://chatgpt.com/share/75d9adef-fecb-492c-bc09-b0287f1b3d3c
+
+
+
+
+Comment est utilisée la fonction stack de R
+ChatGPT
+
+La fonction stack de R est utilisée pour convertir une data frame ou une liste de vecteurs en une structure plus longue et plus étroite, typiquement pour des analyses où les données doivent être dans un format "long" (long format). Cela est souvent utile dans les situations où les colonnes représentent des variables répétées et où vous souhaitez analyser ces données comme une seule variable.
+
+Voici comment utiliser la fonction stack en R avec un exemple pratique.
+Exemple de base
+
+Supposons que nous ayons la data frame suivante :
+
+r
+
+df <- data.frame(
+  A = c(1, 2, 3),
+  B = c(4, 5, 6),
+  C = c(7, 8, 9)
+)
+print(df)
+
+Cette data frame ressemble à ceci :
+
+css
+
+  A B C
+1 1 4 7
+2 2 5 8
+3 3 6 9
+
+Pour convertir cette data frame en format long en utilisant stack, vous pouvez faire :
+
+r
+
+stacked_df <- stack(df)
+print(stacked_df)
+
+Le résultat sera :
+
+css
+
+  values ind
+1      1   A
+2      2   A
+3      3   A
+4      4   B
+5      5   B
+6      6   B
+7      7   C
+8      8   C
+9      9   C
+
+Description des éléments de la sortie
+
+    values : Colonne contenant les valeurs des différentes colonnes de la data frame d'origine.
+    ind : Colonne contenant les noms des colonnes d'origine de la data frame.
+
+Utilisation avec une liste
+
+Si vous avez une liste de vecteurs et que vous souhaitez l'empiler, stack fonctionne de la même manière. Par exemple :
+
+r
+
+lst <- list(
+  A = c(1, 2, 3),
+  B = c(4, 5, 6),
+  C = c(7, 8, 9)
+)
+stacked_lst <- stack(lst)
+print(stacked_lst)
+
+La sortie sera similaire :
+
+css
+
+  values ind
+1      1   A
+2      2   A
+3      3   A
+4      4   B
+5      5   B
+6      6   B
+7      7   C
+8      8   C
+9      9   C
+
+Exemple avec des données étiquetées
+
+Si les colonnes de la data frame d'origine ont des étiquettes, celles-ci seront préservées dans la colonne ind. Par exemple :
+
+r
+
+df2 <- data.frame(
+  Jan = c(100, 150, 200),
+  Feb = c(120, 160, 220),
+  Mar = c(140, 170, 240)
+)
+stacked_df2 <- stack(df2)
+print(stacked_df2)
+
+Le résultat sera :
+
+perl
+
+  values ind
+1    100 Jan
+2    150 Jan
+3    200 Jan
+4    120 Feb
+5    160 Feb
+6    220 Feb
+7    140 Mar
+8    170 Mar
+9    240 Mar
+
+Conclusion
+
+La fonction stack est très utile pour réorganiser les données en format long, particulièrement lorsque les colonnes de votre data frame représentent des observations répétées de différentes variables que vous souhaitez analyser ensemble.
+Est-ce possible de l'utiliser pour additionner plusieurs couches rasters qui ont des valeurs 0/1. J'aimerais ensuite avoir pour chaque pixel, le total des 0 et 1 de plusieurs rasters
+ChatGPT
+
+Oui, il est possible d'utiliser la fonction stack pour manipuler des couches raster en R, mais dans ce contexte, nous utilisons le package raster ou terra pour les opérations sur des objets raster.
+
+Pour additionner plusieurs couches raster contenant des valeurs 0/1 et obtenir le total pour chaque pixel, voici comment vous pouvez procéder avec le package raster :
+Étape 1 : Installer et charger le package raster
+
+Si vous ne l'avez pas encore installé, vous pouvez installer le package raster avec la commande suivante :
+
+r
+
+install.packages("raster")
+
+Puis, chargez-le :
+
+r
+
+library(raster)
+
+Étape 2 : Charger vos couches raster
+
+Supposons que vous ayez plusieurs fichiers raster que vous souhaitez charger et additionner. Vous pouvez les charger avec la fonction raster ou stack :
+
+r
+
+# Exemple de chargement de plusieurs rasters
+raster1 <- raster("chemin/vers/raster1.tif")
+raster2 <- raster("chemin/vers/raster2.tif")
+raster3 <- raster("chemin/vers/raster3.tif")
+
+Étape 3 : Combiner les rasters en un stack
+
+Ensuite, vous combinez ces rasters en un objet stack :
+
+r
+
+raster_stack <- stack(raster1, raster2, raster3)
+
+Étape 4 : Additionner les couches raster
+
+Pour additionner les valeurs des différentes couches raster pour chaque pixel, vous pouvez utiliser la fonction calc :
+
+r
+
+total_raster <- calc(raster_stack, sum)
+
+Exemple complet
+
+Voici un exemple complet avec des rasters fictifs :
+
+r
+
+# Charger le package raster
+library(raster)
+
+# Charger les rasters (remplacez par vos propres fichiers)
+raster1 <- raster("chemin/vers/raster1.tif")
+raster2 <- raster("chemin/vers/raster2.tif")
+raster3 <- raster("chemin/vers/raster3.tif")
+
+# Combiner les rasters en un stack
+raster_stack <- stack(raster1, raster2, raster3)
+
+# Additionner les couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+# Sauvegarder le résultat si nécessaire
+writeRaster(total_raster, "chemin/vers/total_raster.tif", format="GTiff", overwrite=TRUE)
+
+# Afficher le raster résultant
+plot(total_raster)
+
+Utilisation du package terra (optionnel)
+
+Le package terra est une version plus récente et plus rapide pour manipuler des objets raster. Voici comment faire la même chose avec terra :
+
+r
+
+# Installer et charger le package terra
+install.packages("terra")
+library(terra)
+
+# Charger les rasters
+raster1 <- rast("chemin/vers/raster1.tif")
+raster2 <- rast("chemin/vers/raster2.tif")
+raster3 <- rast("chemin/vers/raster3.tif")
+
+# Combiner les rasters en un stack
+raster_stack <- c(raster1, raster2, raster3)
+
+# Additionner les couches raster pour chaque pixel
+total_raster <- app(raster_stack, sum)
+
+# Sauvegarder le résultat si nécessaire
+writeRaster(total_raster, "chemin/vers/total_raster.tif", filetype="GTiff", overwrite=TRUE)
+
+# Afficher le raster résultant
+plot(total_raster)
+
+Conclusion
+
+Utiliser stack dans le contexte des rasters en R implique l'utilisation de packages spécialisés comme raster ou terra. Ces packages offrent des fonctions puissantes pour manipuler et analyser des données raster, y compris l'addition de plusieurs couches raster pour chaque pixel.
+J'aimerais du coup un code R permettant de stack en 1 les couches rasters (format .asc) présentes dans ce dossier qui ont toutes soit une valeur de 0 soit de 1 (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Rasters_stacking). Est-il possible ensuite de le visualiser?
+ChatGPT
+
+Pour empiler et additionner les couches raster présentes dans un dossier spécifique et visualiser le résultat, vous pouvez utiliser le package raster. Voici un script complet pour effectuer cette tâche. Assurez-vous que le dossier contient uniquement les rasters que vous souhaitez empiler.
+Étape 1 : Installer et charger les packages nécessaires
+
+Si vous n'avez pas encore installé le package raster, installez-le en utilisant :
+
+r
+
+install.packages("raster")
+
+Ensuite, chargez le package :
+
+r
+
+library(raster)
+
+Étape 2 : Définir le chemin du dossier et charger les rasters
+
+Définissez le chemin vers votre dossier et chargez tous les fichiers raster avec une extension .asc :
+
+r
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+Étape 3 : Empiler les rasters et les additionner
+
+Empilez les rasters en utilisant la fonction stack et additionnez-les avec la fonction calc :
+
+r
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+Étape 4 : Visualiser le raster résultant
+
+Utilisez la fonction plot pour visualiser le raster résultant :
+
+r
+
+# Visualiser le raster résultant
+plot(total_raster, main = "Total des valeurs des rasters empilés")
+
+Étape 5 : (Optionnel) Sauvegarder le raster résultant
+
+Si vous souhaitez sauvegarder le raster résultant, utilisez la fonction writeRaster :
+
+r
+
+# Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/total_raster.tif"
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Exemple complet
+
+Voici le script complet en une seule fois :
+
+r
+
+# Installer et charger le package raster
+install.packages("raster")
+library(raster)
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+# Visualiser le raster résultant
+plot(total_raster, main = "Total des valeurs des rasters empilés")
+
+# (Optionnel) Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/total_raster.tif"
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Ce script va charger tous les fichiers .asc du dossier spécifié, les empiler, additionner les valeurs des pixels pour chaque couche raster, visualiser le résultat et éventuellement sauvegarder le raster résultant en format GeoTIFF.
+est-il possible d'ajouter les limites des pays sur la carte pour avoir une meilleure visualisation. La voilà : 
+C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\africapolitical.shp
+ChatGPT
+
+Oui, vous pouvez ajouter les limites des pays sur la carte en utilisant un shapefile. Pour ce faire, vous pouvez utiliser les packages raster et rgdal (ou sf pour une manipulation plus moderne des shapefiles).
+
+Voici un exemple complet de script R qui charge les rasters, les empile, les additionne, et ajoute les limites des pays à la visualisation.
+Étape 1 : Installer et charger les packages nécessaires
+
+Si vous ne les avez pas encore installés, installez les packages raster et rgdal (ou sf):
+
+r
+
+install.packages("raster")
+install.packages("rgdal")  # Pour la lecture des shapefiles
+# ou
+install.packages("sf")  # Alternativement pour une approche moderne
+
+Ensuite, chargez les packages :
+
+r
+
+library(raster)
+library(rgdal)  # ou library(sf)
+
+Étape 2 : Charger les rasters et les empiler
+
+r
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+Étape 3 : Charger le shapefile des limites des pays
+
+r
+
+# Définir le chemin vers le shapefile
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Charger le shapefile
+country_borders <- readOGR(shapefile_path)
+# ou, si vous utilisez sf
+# country_borders <- st_read(shapefile_path)
+
+Étape 4 : Visualiser le raster avec les limites des pays
+
+r
+
+# Visualiser le raster résultant avec les limites des pays
+plot(total_raster, main = "Total des valeurs des rasters empilés")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+
+Étape 5 : (Optionnel) Sauvegarder le raster résultant
+
+r
+
+# Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/total_raster.tif"
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Exemple complet
+
+Voici le script complet en une seule fois :
+
+r
+
+# Installer et charger les packages nécessaires
+install.packages("raster")
+install.packages("rgdal")
+# ou
+install.packages("sf")
+
+library(raster)
+library(rgdal)  # ou library(sf)
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+# Définir le chemin vers le shapefile
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Charger le shapefile
+country_borders <- readOGR(shapefile_path)
+# ou, si vous utilisez sf
+# country_borders <- st_read(shapefile_path)
+
+# Visualiser le raster résultant avec les limites des pays
+plot(total_raster, main = "Total des valeurs des rasters empilés")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+
+# (Optionnel) Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/total_raster.tif"
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Ce script charge les rasters, les empile, les additionne, charge les limites des pays à partir d'un shapefile, et visualise le résultat en ajoutant les limites des pays à la carte. Vous pouvez également sauvegarder le raster résultant en format GeoTIFF.
+Serait-ce possible de retravailler la carte en y mettant une légende ainsi qu'en ajoutant un shapefile des limites des pays pour que ce soit plus clair (C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\africapolitical.shp)
+ChatGPT
+
+Bien sûr, nous pouvons ajouter une légende et un shapefile des limites des pays pour améliorer la visualisation. Nous utiliserons les packages raster, rgdal, et RColorBrewer pour personnaliser les couleurs et ajouter une légende.
+
+Voici un script complet pour cette tâche :
+Étape 1 : Installer et charger les packages nécessaires
+
+Si vous ne les avez pas encore installés, installez les packages raster, rgdal, et RColorBrewer :
+
+r
+
+install.packages("raster")
+install.packages("rgdal")
+install.packages("RColorBrewer")
+
+Ensuite, chargez les packages :
+
+r
+
+library(raster)
+library(rgdal)
+library(RColorBrewer)
+
+Étape 2 : Charger les rasters et les empiler
+
+r
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+Étape 3 : Charger le shapefile des limites des pays
+
+r
+
+# Définir le chemin vers le shapefile
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Charger le shapefile
+country_borders <- readOGR(shapefile_path)
+
+Étape 4 : Visualiser le raster avec les limites des pays et ajouter une légende
+
+r
+
+# Définir les couleurs et les breaks pour la légende
+colors <- brewer.pal(9, "Blues")
+breaks <- seq(0, maxValue(total_raster), length.out = 10)
+
+# Visualiser le raster résultant avec les limites des pays et ajouter une légende
+plot(total_raster, col = colors, breaks = breaks, main = "Total des valeurs des rasters empilés")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+
+# Ajouter une légende
+legend("topright", legend = seq(0, maxValue(total_raster), length.out = 10), 
+       fill = colors, title = "Total", cex = 0.8)
+
+Étape 5 : (Optionnel) Sauvegarder le raster résultant
+
+r
+
+# Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/total_raster.tif"
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Exemple complet
+
+Voici le script complet en une seule fois :
+
+r
+
+# Installer et charger les packages nécessaires
+install.packages("raster")
+install.packages("rgdal")
+install.packages("RColorBrewer")
+
+library(raster)
+library(rgdal)
+library(RColorBrewer)
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+# Définir le chemin vers le shapefile
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Charger le shapefile
+country_borders <- readOGR(shapefile_path)
+
+# Définir les couleurs et les breaks pour la légende
+colors <- brewer.pal(9, "Blues")
+breaks <- seq(0, maxValue(total_raster), length.out = 10)
+
+# Visualiser le raster résultant avec les limites des pays et ajouter une légende
+plot(total_raster, col = colors, breaks = breaks, main = "Total des valeurs des rasters empilés")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+
+# Ajouter une légende
+legend("topright", legend = seq(0, maxValue(total_raster), length.out = 10), 
+       fill = colors, title = "Total", cex = 0.8)
+
+# (Optionnel) Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/total_raster.tif"
+writeRaster(total_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Ce script charge les rasters, les empile, les additionne, charge les limites des pays à partir d'un shapefile, et visualise le résultat en ajoutant les limites des pays à la carte avec une légende. Vous pouvez également sauvegarder le raster résultant en format GeoTIFF.
+L'image n'est pas super belle. Est-il possible de ne prendre que la zone comprise entre -7 et 7 de latitude et 7 et 17 de longitude. J'aimerais aussi que le dégradé de couleur soit des verts vers jaune puis rouge.
+2/2
+ChatGPT
+
+Bien sûr, vous pouvez recadrer la zone géographique et ajuster la palette de couleurs pour améliorer la visualisation. Pour ce faire, nous allons :
+
+    Charger les rasters et les empiler.
+    Recadrer les rasters pour la zone d'intérêt.
+    Ajuster les couleurs pour un dégradé de vert à jaune à rouge.
+    Visualiser le résultat avec les limites des pays et une légende.
+
+Voici le script complet avec les ajustements demandés :
+Étape 1 : Installer et charger les packages nécessaires
+
+Si vous ne les avez pas encore installés, installez les packages raster, rgdal, et RColorBrewer :
+
+r
+
+install.packages("raster")
+install.packages("rgdal")
+install.packages("RColorBrewer")
+
+Ensuite, chargez les packages :
+
+r
+
+library(raster)
+library(rgdal)
+library(RColorBrewer)
+
+Étape 2 : Charger les rasters et les empiler
+
+r
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+Étape 3 : Recadrer le raster pour la zone d'intérêt
+
+r
+
+# Définir l'étendue de la zone d'intérêt
+extent_of_interest <- extent(7, 17, -7, 7)
+
+# Recadrer le raster à cette étendue
+cropped_raster <- crop(total_raster, extent_of_interest)
+
+Étape 4 : Charger le shapefile des limites des pays
+
+r
+
+# Définir le chemin vers le shapefile
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Charger le shapefile
+country_borders <- readOGR(shapefile_path)
+
+Étape 5 : Visualiser le raster avec les limites des pays et une légende
+
+r
+
+# Définir les couleurs pour un dégradé de vert à jaune à rouge
+colors <- colorRampPalette(c("green", "yellow", "red"))(100)
+
+# Visualiser le raster résultant avec les limites des pays et ajouter une légende
+plot(cropped_raster, col = colors, main = "Total des valeurs des rasters empilés (Zone d'intérêt)")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+
+# Ajouter une légende
+legend("topright", legend = round(seq(0, maxValue(cropped_raster), length.out = 10)), 
+       fill = colors[seq(1, 100, length.out = 10)], title = "Total", cex = 0.8)
+
+Étape 6 : (Optionnel) Sauvegarder le raster résultant
+
+r
+
+# Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/cropped_total_raster.tif"
+writeRaster(cropped_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Exemple complet
+
+Voici le script complet en une seule fois :
+
+r
+
+# Installer et charger les packages nécessaires
+install.packages("raster")
+install.packages("rgdal")
+install.packages("RColorBrewer")
+
+library(raster)
+library(rgdal)
+library(RColorBrewer)
+
+# Définir le chemin vers le dossier contenant les rasters
+folder_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking"
+
+# Lister tous les fichiers .asc dans le dossier
+raster_files <- list.files(path = folder_path, pattern = "\\.asc$", full.names = TRUE)
+
+# Charger tous les rasters
+rasters <- lapply(raster_files, raster)
+
+# Empiler les rasters
+raster_stack <- stack(rasters)
+
+# Additionner les valeurs des couches raster pour chaque pixel
+total_raster <- calc(raster_stack, sum)
+
+# Définir l'étendue de la zone d'intérêt
+extent_of_interest <- extent(7, 17, -7, 7)
+
+# Recadrer le raster à cette étendue
+cropped_raster <- crop(total_raster, extent_of_interest)
+
+# Définir le chemin vers le shapefile
+shapefile_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/africapolitical.shp"
+
+# Charger le shapefile
+country_borders <- readOGR(shapefile_path)
+
+# Définir les couleurs pour un dégradé de vert à jaune à rouge
+colors <- colorRampPalette(c("green", "yellow", "red"))(100)
+
+# Visualiser le raster résultant avec les limites des pays et ajouter une légende
+plot(cropped_raster, col = colors, main = "Total des valeurs des rasters empilés (Zone d'intérêt)")
+plot(country_borders, add = TRUE, border = "black", lwd = 2)  # Ajouter les limites des pays
+
+# Ajouter une légende
+legend("topright", legend = round(seq(0, maxValue(cropped_raster), length.out = 10)), 
+       fill = colors[seq(1, 100, length.out = 10)], title = "Total", cex = 0.8)
+
+# (Optionnel) Sauvegarder le raster résultant
+output_path <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/cropped_total_raster.tif"
+writeRaster(cropped_raster, output_path, format = "GTiff", overwrite = TRUE)
+
+Ce script charge les rasters, les empile, les additionne, recadre le résultat à la zone d'intérêt, charge les limites des pays à partir d'un shapefile, et visualise le résultat avec une légende et une palette de couleurs allant du vert au jaune puis au rouge. Vous pouvez également sauvegarder le raster résultant en format GeoTIFF.
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+J'aimerais un code R qui fasse les actions suivantes. J'ai une liste d'espèces et une liste avec les données de présence de chaque espèce. J'aimerais que pour chaque espèce de la liste, tu construises un dataframe reprenant les différents 'ID_grid' qui correspondent au nom de l'espèce qui est dans la colonne 'tax_sp_level'. Il faut que tu transformes ces ID_grid en données de geometry à l'aide de la colonne 'ID_grid' de 'grid'. Ensuite, tu vas construires pour chaque espèce un raster qui aura la valeur de 1 pour les données de geometry et 0 pour le reste. Ce raster aura initialement les données de geometry de 'grid'.
+Ici je vais mettre comment obtenir les différentes données :
+- liste d'espèces -> C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\sp_non_model.xlsx
+- liste des présences -> C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\RB_zone_grid.csv
+- grid -> zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp") #zone of interest
+
+CS = 0.1 # size in decimal degree of cell size
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T) #grid creation in zone
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()
+grid_cropped <- st_intersection(grid, zone) #take only the ID_grid in the zone
+grid <- grid %>% 
+  filter(ID_grid %in% grid_cropped$ID_grid) #filter the grid to have the good ID_grid (not in the sea)
+- fichier de sortie des rasters -> C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\R script\MaxEnt\Cartes\Rasters_stacking\sp_non_model
+ChatGPT
+
+Pour réaliser cette tâche en R, vous devez suivre plusieurs étapes principales : charger les données, filtrer et manipuler les données spatiales, et générer les rasters pour chaque espèce. Voici un script R complet pour ce processus. Assurez-vous d'avoir les bibliothèques nécessaires installées (readxl, tidyverse, sf, raster, sp, rgdal, dplyr).
+
+r
+
+# Chargement des bibliothèques nécessaires
+library(readxl)
+library(tidyverse)
+library(sf)
+library(raster)
+library(sp)
+library(rgdal)
+library(dplyr)
+
+# Chargement des données
+species_list <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/sp_non_model.xlsx")
+presence_data <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Chargement et création de la grille
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+CS <- 0.1 # taille des cellules en degrés décimaux
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>% 
+  mutate(ID_grid = 1:length(grid)) %>%
+  st_as_sf()
+
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+# Fonction pour créer les rasters pour chaque espèce
+create_species_raster <- function(species_name, presence_data, grid, output_dir) {
+  species_data <- presence_data %>% filter(tax_sp_level == species_name)
+  
+  if(nrow(species_data) == 0) {
+    message(paste("Aucune donnée de présence pour l'espèce :", species_name))
+    return(NULL)
+  }
+  
+  species_grid <- grid %>% filter(ID_grid %in% species_data$ID_grid)
+  
+  r <- raster(extent(st_bbox(grid)), res = CS)
+  r <- rasterize(species_grid, r, field = 1, background = 0)
+  
+  output_path <- file.path(output_dir, paste0(species_name, ".tif"))
+  writeRaster(r, output_path, format = "GTiff", overwrite = TRUE)
+  message(paste("Raster créé pour l'espèce :", species_name, "et enregistré à :", output_path))
+}
+
+# Chemin du répertoire de sortie pour les rasters
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_non_model"
+
+# Création des rasters pour chaque espèce
+species_list$species_name %>% unique() %>% walk(~ create_species_raster(.x, presence_data, grid, output_dir))
+
+Explications :
+
+    Chargement des données :
+        On utilise read_excel pour charger la liste des espèces et read_csv pour charger les données de présence.
+        La grille de la zone d'intérêt est créée à partir du fichier shapefile.
+
+    Création de la grille :
+        La grille est créée en utilisant la taille des cellules (CS).
+        Ensuite, la grille est croppée pour ne conserver que les cellules à l'intérieur de la zone d'intérêt.
+
+    Création des rasters pour chaque espèce :
+        Pour chaque espèce, on filtre les données de présence pour ne conserver que les ID_grid correspondants.
+        On crée ensuite un raster avec des cellules valant 1 là où l'espèce est présente et 0 ailleurs.
+        Le raster est ensuite enregistré sous forme de fichier .tif dans le répertoire de sortie spécifié.
+
+    Exécution du script :
+        Les rasters sont créés pour chaque espèce présente dans la liste et sont sauvegardés dans le répertoire de sortie spécifié.
+
+Ce script devrait couvrir l'ensemble de votre demande. Assurez-vous que tous les chemins de fichiers et répertoires spécifiés existent et sont corrects avant d'exécuter le script.
+Il y a un problème, je pense que c'est pcq la colonne avec les espèces est 'taxon'.
+> # Chargement des données
+> species_list <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/sp_non_model.xlsx")
+> presence_data <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+New names:
+• ` -> ...1
+Avis : One or more parsing issues, call problems() on your data frame for details, e.g.:
+  dat <- vroom(...)
+  problems(dat)
+Rows: 256532 Columns: 128
+── Column specification ──────────────────────────────────────────────────────────────────────────────
+Delimiter: ","
+chr (84): DB, idc, colnam, suffix, nbr, prefix, detnam, colnamsup, maj_area_original, verif_iso3, ...
+dbl (37): ...1, ID, ID_grid, dety, detm, detd, calc_accuracy, accuracy, verif_distance, id_maj_are...
+lgl  (7): idrb_n_good, garden, author3, introduced_status, traitvalue_char_growth_form_level_1_1_2...
+
+ℹ Use spec() to retrieve the full column specification for this data.
+ℹ Specify the column types or set show_col_types = FALSE to quiet this message.
+> 
+> # Chargement et création de la grille
+> zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+Reading layer Contour_Zone_Interet' from data source 
+  C:\Users\Alex Massart\OneDrive - Université Libre de Bruxelles\Documents\ULB\2023-2024\Mémoire\QGIS\Shapefiles\Contour_Zone_Interet.shp' 
+  using driver ESRI Shapefile'
+Simple feature collection with 1 feature and 1 field
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 7.723095 ymin: -5.978388 xmax: 16.42309 ymax: 6.621612
+Geodetic CRS:  WGS 84
+> 
+> CS <- 0.1 # taille des cellules en degrés décimaux
+> grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = TRUE)
+> grid <- as_tibble(grid) %>% 
++   mutate(ID_grid = 1:length(grid)) %>%
++   st_as_sf()
+> 
+> grid_cropped <- st_intersection(grid, zone)
+Avis : attribute variables are assumed to be spatially constant throughout all geometries
+> grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+> 
+> # Fonction pour créer les rasters pour chaque espèce
+> create_species_raster <- function(species_name, presence_data, grid, output_dir) {
++   species_data <- presence_data %>% filter(tax_sp_level == species_name)
++   
++   if(nrow(species_data) == 0) {
++     message(paste("Aucune donnée de présence pour l'espèce :", species_name))
++     return(NULL)
++   }
++   
++   species_grid <- grid %>% filter(ID_grid %in% species_data$ID_grid)
++   
++   r <- raster(extent(st_bbox(grid)), res = CS)
++   r <- rasterize(species_grid, r, field = 1, background = 0)
++   
++   output_path <- file.path(output_dir, paste0(species_name, ".tif"))
++   writeRaster(r, output_path, format = "GTiff", overwrite = TRUE)
++   message(paste("Raster créé pour l'espèce :", species_name, "et enregistré à :", output_path))
++ }
+> 
+> # Chemin du répertoire de sortie pour les rasters
+> output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_non_model"
+> 
+> # Création des rasters pour chaque espèce
+> species_list$species_name %>% unique() %>% walk(~ create_species_raster(.x, presence_data, grid, output_dir))
+Avis : Unknown or uninitialised column: species_name.
+2/2
+ChatGPT
+
+Merci pour les détails supplémentaires. Il semble que la colonne contenant les noms des espèces dans votre fichier Excel soit nommée taxon au lieu de species_name. De plus, il semble y avoir des problèmes lors du chargement des fichiers CSV avec des colonnes non spécifiées. Voici comment vous pouvez ajuster le script pour corriger ces problèmes :
+
+    Spécifier les noms de colonnes corrects.
+    Corriger les éventuelles colonnes supplémentaires ou non spécifiées dans les fichiers CSV.
+
+Voici le script modifié :
+
+r
+
+# Chargement des bibliothèques nécessaires
+library(readxl)
+library(tidyverse)
+library(sf)
+library(raster)
+library(sp)
+library(rgdal)
+library(dplyr)
+
+# Chargement des données
+species_list <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/sp_non_model.xlsx")
+presence_data <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Vérifiez les noms des colonnes pour s'assurer qu'ils sont corrects
+colnames(species_list)
+colnames(presence_data)
+
+# Si la colonne des espèces est "taxon" dans species_list, changez l'appel en conséquence
+species_list <- species_list %>% rename(species_name = taxon)
+
+# Si "ID_grid" et "tax_sp_level" sont les noms des colonnes appropriés dans presence_data
+# Vous pouvez vérifier avec:
+# print(colnames(presence_data))
+
+# Chargement et création de la grille
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+CS <- 0.1 # taille des cellules en degrés décimaux
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>% 
+  mutate(ID_grid = 1:length(grid)) %>%
+  st_as_sf()
+
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+# Fonction pour créer les rasters pour chaque espèce
+create_species_raster <- function(species_name, presence_data, grid, output_dir) {
+  species_data <- presence_data %>% filter(tax_sp_level == species_name)
+  
+  if(nrow(species_data) == 0) {
+    message(paste("Aucune donnée de présence pour l'espèce :", species_name))
+    return(NULL)
+  }
+  
+  species_grid <- grid %>% filter(ID_grid %in% species_data$ID_grid)
+  
+  r <- raster(extent(st_bbox(grid)), res = CS)
+  r <- rasterize(species_grid, r, field = 1, background = 0)
+  
+  output_path <- file.path(output_dir, paste0(species_name, ".tif"))
+  writeRaster(r, output_path, format = "GTiff", overwrite = TRUE)
+  message(paste("Raster créé pour l'espèce :", species_name, "et enregistré à :", output_path))
+}
+
+# Chemin du répertoire de sortie pour les rasters
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_non_model"
+
+# Création des rasters pour chaque espèce
+species_list$species_name %>% unique() %>% walk(~ create_species_raster(.x, presence_data, grid, output_dir))
+
+Points clés :
+
+    Renommer la colonne taxon dans species_list en species_name.
+    Assurez-vous que les colonnes ID_grid et tax_sp_level sont bien présentes dans presence_data.
+    Vérifiez les noms de colonnes dans les deux jeux de données avec colnames() pour confirmer que les noms de colonnes utilisés dans le script sont corrects.
+
+Avec ces ajustements, le script devrait fonctionner correctement et générer les rasters pour chaque espèce.
+Serait-ce possible de les enregistrer sous le format .asc
+ChatGPT
+
+Oui, il est tout à fait possible de sauvegarder les rasters sous format .asc (ASCII Grid) avec R. Nous allons utiliser la fonction writeRaster avec le format spécifié comme ascii.
+
+Voici le script mis à jour pour sauvegarder les rasters au format .asc :
+
+r
+
+# Chargement des bibliothèques nécessaires
+library(readxl)
+library(tidyverse)
+library(sf)
+library(raster)
+library(sp)
+library(rgdal)
+library(dplyr)
+
+# Chargement des données
+species_list <- read_excel("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/sp_non_model.xlsx")
+presence_data <- read_csv("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+
+# Vérifiez les noms des colonnes pour s'assurer qu'ils sont corrects
+colnames(species_list)
+colnames(presence_data)
+
+# Si la colonne des espèces est "taxon" dans species_list, changez l'appel en conséquence
+species_list <- species_list %>% rename(species_name = taxon)
+
+# Chargement et création de la grille
+zone <- st_read("C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/Contour_Zone_Interet.shp")
+
+CS <- 0.1 # taille des cellules en degrés décimaux
+grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = TRUE)
+grid <- as_tibble(grid) %>% 
+  mutate(ID_grid = 1:length(grid)) %>%
+  st_as_sf()
+
+grid_cropped <- st_intersection(grid, zone)
+grid <- grid %>% filter(ID_grid %in% grid_cropped$ID_grid)
+
+# Fonction pour créer les rasters pour chaque espèce
+create_species_raster <- function(species_name, presence_data, grid, output_dir) {
+  species_data <- presence_data %>% filter(tax_sp_level == species_name)
+  
+  if(nrow(species_data) == 0) {
+    message(paste("Aucune donnée de présence pour l'espèce :", species_name))
+    return(NULL)
+  }
+  
+  species_grid <- grid %>% filter(ID_grid %in% species_data$ID_grid)
+  
+  r <- raster(extent(st_bbox(grid)), res = CS)
+  r <- rasterize(species_grid, r, field = 1, background = 0)
+  
+  output_path <- file.path(output_dir, paste0(species_name, ".asc"))
+  writeRaster(r, output_path, format = "ascii", overwrite = TRUE)
+  message(paste("Raster créé pour l'espèce :", species_name, "et enregistré à :", output_path))
+}
+
+# Chemin du répertoire de sortie pour les rasters
+output_dir <- "C:/Users/Alex Massart/OneDrive - Université Libre de Bruxelles/Documents/ULB/2023-2024/Mémoire/R script/MaxEnt/Cartes/Rasters_stacking/sp_non_model"
+
+# Création des rasters pour chaque espèce
+species_list$species_name %>% unique() %>% walk(~ create_species_raster(.x, presence_data, grid, output_dir))
+
+Points clés :
+
+    Modification du format de sortie : Utilisation de format = "ascii" dans la fonction writeRaster pour sauvegarder les rasters au format .asc.
+    Mise à jour du chemin de sortie : Le chemin de sortie pour les fichiers .asc est construit en utilisant l'extension .asc dans output_path.
+
+Avec ces modifications, le script devrait maintenant générer et sauvegarder les rasters pour chaque espèce au format .asc.

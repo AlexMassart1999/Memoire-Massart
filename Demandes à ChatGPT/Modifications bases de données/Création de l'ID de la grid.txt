@@ -1,0 +1,39 @@
+User
+J'ai ce script R : # A partir du script Gabon_maps de Nicolas
+
+RB_sf <- sf::st_as_sf(RB_zone %>% dplyr::filter(!is.na(ddlon)), coords = c("ddlon", "ddlat"), crs = 4326)
+
+zone <- st_read("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/QGIS/grille_bas_guineen.shp")
+grid <- st_transform(zone, crs = 4326)
+
+#CS = 0.1 # size in decimal degree of cell size
+#grid <- st_make_grid(zone, n = c(ceiling(diff(st_bbox(zone)[c(1, 3)])/CS), ceiling(diff(st_bbox(zone)[c(2, 4)])/CS)), square = T)
+
+grid <- as_tibble(grid) %>% # integrate numero of cell in grid
+  mutate(ID_grid = c(1:length(grid))) %>%
+  st_as_sf()                                                                                                                                                                                             qui donne l'erreur : Erreur dans mutate(., ID_grid = c(1:length(grid))) : 
+Caused by error:
+! `ID_grid` must be size 8624 or 1, not 6.
+ChatGPT
+
+L'erreur que vous rencontrez est due à la taille incohérente de l'objet ID_grid. Il semble que sa taille soit de 6 au lieu de 8624 ou 1, comme attendu. Cela peut être dû à une mauvaise manipulation des données ou à une erreur dans le processus de création de ID_grid.
+
+Il semble que vous essayez d'ajouter une nouvelle colonne ID_grid à votre tibble grid, avec des valeurs de 1 à la longueur de grid. Cependant, la longueur de grid semble être 6, ce qui n'est probablement pas ce que vous attendiez.
+
+Pour résoudre ce problème, je suggère de revoir votre processus de création de ID_grid. Vous pouvez peut-être utiliser une autre méthode pour attribuer des identifiants uniques à chaque cellule de votre grille. Par exemple, vous pouvez utiliser la fonction row_number() de dplyr pour créer une séquence de numéros uniques. Voici comment vous pouvez le faire :
+
+R
+
+library(sf)
+library(dplyr)
+
+# Assume que 'grid' est déjà créé et contient les données de votre grille
+
+# Ajouter une colonne 'ID_grid' avec des numéros de ligne uniques
+grid <- grid %>%
+  mutate(ID_grid = row_number())
+
+# Vérifier la structure de 'grid' après l'ajout de 'ID_grid'
+str(grid)
+
+Cela devrait attribuer des identifiants uniques à chaque cellule de votre grille, sans rencontrer l'erreur que vous avez mentionnée. Assurez-vous également que votre grille est correctement définie et contient toutes les informations nécessaires avant de créer la colonne ID_grid.

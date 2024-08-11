@@ -1,0 +1,267 @@
+https://chatgpt.com/share/a2a5ed2a-0e91-4461-a6fe-b896c0263798
+
+
+
+J'ai plusieurs shapefile et j'aimerais avoir la superficie qu'ils occuppent au total et la superficie de chaque objet de ces chapefiles. Peux-tu me faire un code R pour cela. Il faudrait aussi que tu me donnes le %age de recouvrement entre les 2 shapefiles.
+
+maxent_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+brt_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_BRT.shp")
+ChatGPT
+
+Bien sûr! Voici un exemple de code R pour lire les shapefiles, calculer la superficie totale de chaque shapefile ainsi que la superficie de chaque objet à l'intérieur de ces shapefiles. Le code calcule également le pourcentage de recouvrement entre les deux shapefiles.
+
+Assurez-vous d'avoir installé les packages sf et dplyr avant d'exécuter ce code.
+
+r
+
+# Installation des packages nécessaires (si pas déjà installés)
+if(!require(sf)) install.packages("sf")
+if(!require(dplyr)) install.packages("dplyr")
+
+# Chargement des packages
+library(sf)
+library(dplyr)
+
+# Lecture des shapefiles
+maxent_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+brt_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_BRT.shp")
+
+# Calcul de la superficie de chaque objet pour maxent_zones
+maxent_zones <- maxent_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour maxent_zones
+total_area_maxent <- sum(maxent_zones$area)
+
+# Calcul de la superficie de chaque objet pour brt_zones
+brt_zones <- brt_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour brt_zones
+total_area_brt <- sum(brt_zones$area)
+
+# Calcul de la zone de recouvrement entre les deux shapefiles
+intersection <- st_intersection(maxent_zones, brt_zones)
+
+# Calcul de la superficie de la zone de recouvrement
+intersection_area <- sum(st_area(intersection))
+
+# Calcul du pourcentage de recouvrement
+percentage_overlap <- (intersection_area / total_area_maxent) * 100
+
+# Affichage des résultats
+print(paste("Superficie totale de maxent_zones: ", total_area_maxent, " m^2"))
+print(paste("Superficie totale de brt_zones: ", total_area_brt, " m^2"))
+print(paste("Superficie de la zone de recouvrement: ", intersection_area, " m^2"))
+print(paste("Pourcentage de recouvrement de maxent_zones par brt_zones: ", percentage_overlap, "%"))
+
+# Affichage de la superficie de chaque objet dans maxent_zones
+print(maxent_zones)
+
+# Affichage de la superficie de chaque objet dans brt_zones
+print(brt_zones)
+
+Ce code exécute les étapes suivantes :
+
+    Installe et charge les packages sf et dplyr.
+    Lit les shapefiles maxent_zones et brt_zones.
+    Calcule la superficie de chaque objet dans maxent_zones et brt_zones.
+    Calcule la superficie totale des objets dans chaque shapefile.
+    Calcule la zone de recouvrement entre les deux shapefiles.
+    Calcule et affiche le pourcentage de recouvrement de maxent_zones par brt_zones.
+    Affiche la superficie de chaque objet dans maxent_zones et brt_zones.
+
+Assurez-vous que vos shapefiles sont dans le bon système de coordonnées pour que les calculs de superficie soient corrects. Vous pouvez vérifier ou transformer le système de coordonnées avec st_crs() et st_transform().
+# Lecture des shapefiles
+maxent_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+brt_zones <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Séries de conservation/Fusion_SériesConservation.shp")
+
+# Calcul de la superficie de chaque objet pour maxent_zones
+maxent_zones <- maxent_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour maxent_zones
+total_area_maxent <- sum(maxent_zones$area)
+
+# Calcul de la superficie de chaque objet pour brt_zones
+brt_zones <- brt_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour brt_zones
+total_area_brt <- sum(brt_zones$area)
+# Calcul de la zone de recouvrement entre les deux shapefiles
+intersection <- st_intersection(maxent_zones, brt_zones)
+# Calcul de la superficie de la zone de recouvrement
+intersection_area <- sum(st_area(intersection))
+# Calcul du pourcentage de recouvrement
+percentage_overlap <- (intersection_area / total_area_maxent) * 100
+
+# Affichage des résultats
+print(paste("Superficie totale de maxent_zones: ", total_area_maxent, " m^2"))
+print(paste("Superficie totale de brt_zones: ", total_area_brt, " m^2"))
+print(paste("Superficie de la zone de recouvrement: ", intersection_area, " m^2"))
+print(paste("Pourcentage de recouvrement de maxent_zones par brt_zones: ", percentage_overlap, "%"))
+
+> intersection <- st_intersection(maxent_zones, brt_zones)
+Erreur dans geos_op2_geom("intersection", x, y, ...) : 
+  st_crs(x) == st_crs(y) n'est pas TRUE
+ChatGPT
+
+L'erreur que vous obtenez (st_crs(x) == st_crs(y) n'est pas TRUE) indique que les deux shapefiles ne sont pas dans le même système de coordonnées (CRS, Coordinate Reference System). Pour résoudre ce problème, il faut s'assurer que les deux shapefiles utilisent le même CRS. Voici comment vous pouvez vérifier et, si nécessaire, transformer le CRS de l'un des shapefiles pour qu'ils correspondent :
+
+r
+
+# Installation des packages nécessaires (si pas déjà installés)
+if(!require(sf)) install.packages("sf")
+if(!require(dplyr)) install.packages("dplyr")
+
+# Chargement des packages
+library(sf)
+library(dplyr)
+
+# Lecture des shapefiles
+maxent_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+brt_zones <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Séries de conservation/Fusion_SériesConservation.shp")
+
+# Vérification des systèmes de coordonnées
+crs_maxent <- st_crs(maxent_zones)
+crs_brt <- st_crs(brt_zones)
+
+print(crs_maxent)
+print(crs_brt)
+
+# Si les systèmes de coordonnées sont différents, transformer brt_zones pour qu'il ait le même CRS que maxent_zones
+if(crs_maxent != crs_brt) {
+  brt_zones <- st_transform(brt_zones, crs_maxent)
+}
+
+# Calcul de la superficie de chaque objet pour maxent_zones
+maxent_zones <- maxent_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour maxent_zones
+total_area_maxent <- sum(maxent_zones$area)
+
+# Calcul de la superficie de chaque objet pour brt_zones
+brt_zones <- brt_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour brt_zones
+total_area_brt <- sum(brt_zones$area)
+
+# Calcul de la zone de recouvrement entre les deux shapefiles
+intersection <- st_intersection(maxent_zones, brt_zones)
+
+# Calcul de la superficie de la zone de recouvrement
+intersection_area <- sum(st_area(intersection))
+
+# Calcul du pourcentage de recouvrement
+percentage_overlap <- (intersection_area / total_area_maxent) * 100
+
+# Affichage des résultats
+print(paste("Superficie totale de maxent_zones: ", total_area_maxent, " m^2"))
+print(paste("Superficie totale de brt_zones: ", total_area_brt, " m^2"))
+print(paste("Superficie de la zone de recouvrement: ", intersection_area, " m^2"))
+print(paste("Pourcentage de recouvrement de maxent_zones par brt_zones: ", percentage_overlap, "%"))
+
+# Affichage de la superficie de chaque objet dans maxent_zones
+print(maxent_zones)
+
+# Affichage de la superficie de chaque objet dans brt_zones
+print(brt_zones)
+
+Voici les étapes ajoutées dans ce code :
+
+    Vérification des systèmes de coordonnées des deux shapefiles avec st_crs().
+    Si les CRS sont différents, transformation de brt_zones pour qu'il ait le même CRS que maxent_zones avec st_transform().
+    Puis, le code continue avec les calculs des superficies et du pourcentage de recouvrement comme précédemment.
+
+Assurez-vous que les shapefiles sont correctement projetés dans un CRS métrique (comme UTM) pour que les calculs de surface soient en mètres carrés et aient du sens.
+Erreur dans st_transform.sfc(st_geometry(x), crs, ...) : 
+  cannot transform sfc object with missing crs
+ChatGPT
+
+L'erreur indique que l'un des shapefiles n'a pas de système de coordonnées défini. Il faut d'abord vérifier et définir le CRS des shapefiles s'ils ne sont pas déjà définis avant de les transformer.
+
+Voici comment vérifier et définir le CRS si nécessaire, puis transformer les shapefiles pour qu'ils utilisent le même CRS:
+
+r
+
+# Installation des packages nécessaires (si pas déjà installés)
+if(!require(sf)) install.packages("sf")
+if(!require(dplyr)) install.packages("dplyr")
+
+# Chargement des packages
+library(sf)
+library(dplyr)
+
+# Lecture des shapefiles
+maxent_zones <- st_read("C:/Users/Alex Massart/Documents/output_zones_Maxent.shp")
+brt_zones <- st_read("D:/Mémoire_documents_supps/Mémoire_Luane_documents/Data/Données spatiales/Aires protégées/Séries de conservation/Fusion_SériesConservation.shp")
+
+# Vérification des systèmes de coordonnées
+crs_maxent <- st_crs(maxent_zones)
+crs_brt <- st_crs(brt_zones)
+
+print(crs_maxent)
+print(crs_brt)
+
+# Si l'un des shapefiles n'a pas de CRS défini, définir le CRS manuellement
+# Supposons que le CRS attendu soit EPSG:4326 (WGS 84), vous pouvez le remplacer par le CRS correct
+if (is.na(crs_maxent)) {
+  st_crs(maxent_zones) <- 4326
+  crs_maxent <- st_crs(maxent_zones)  # Recharger le CRS après l'avoir défini
+}
+
+if (is.na(crs_brt)) {
+  st_crs(brt_zones) <- 4326
+  crs_brt <- st_crs(brt_zones)  # Recharger le CRS après l'avoir défini
+}
+
+# Si les systèmes de coordonnées sont différents, transformer brt_zones pour qu'il ait le même CRS que maxent_zones
+if(crs_maxent != crs_brt) {
+  brt_zones <- st_transform(brt_zones, crs_maxent)
+}
+
+# Calcul de la superficie de chaque objet pour maxent_zones
+maxent_zones <- maxent_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour maxent_zones
+total_area_maxent <- sum(maxent_zones$area)
+
+# Calcul de la superficie de chaque objet pour brt_zones
+brt_zones <- brt_zones %>%
+  mutate(area = st_area(geometry))
+
+# Calcul de la superficie totale pour brt_zones
+total_area_brt <- sum(brt_zones$area)
+
+# Calcul de la zone de recouvrement entre les deux shapefiles
+intersection <- st_intersection(maxent_zones, brt_zones)
+
+# Calcul de la superficie de la zone de recouvrement
+intersection_area <- sum(st_area(intersection))
+
+# Calcul du pourcentage de recouvrement
+percentage_overlap <- (intersection_area / total_area_maxent) * 100
+
+# Affichage des résultats
+print(paste("Superficie totale de maxent_zones: ", total_area_maxent, " m^2"))
+print(paste("Superficie totale de brt_zones: ", total_area_brt, " m^2"))
+print(paste("Superficie de la zone de recouvrement: ", intersection_area, " m^2"))
+print(paste("Pourcentage de recouvrement de maxent_zones par brt_zones: ", percentage_overlap, "%"))
+
+# Affichage de la superficie de chaque objet dans maxent_zones
+print(maxent_zones)
+
+# Affichage de la superficie de chaque objet dans brt_zones
+print(brt_zones)
+
+Voici les étapes ajoutées et modifiées dans ce code:
+
+    Vérifie si les shapefiles ont un CRS défini.
+    Si un shapefile n'a pas de CRS défini, définir manuellement le CRS (dans cet exemple, EPSG:4326 est utilisé; vous devez utiliser le CRS correct pour vos données).
+    Transforme brt_zones pour qu'il ait le même CRS que maxent_zones si les CRS sont différents.
+    Continue avec les calculs des superficies et du pourcentage de recouvrement comme précédemment.
+

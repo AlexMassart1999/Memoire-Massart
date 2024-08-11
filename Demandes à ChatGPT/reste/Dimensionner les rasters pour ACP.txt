@@ -1,0 +1,152 @@
+ChatGPT 3.5
+User
+Voilà mon code, il n'est cependant pas ok : ```{r Telechargement des couches, include=FALSE}
+# Code fait à l'aide de chatGPT
+
+# Définir l'extent de la zone d'étude
+study_extent <- extent(c(7.5, 16.54, -5.99, 6.63))
+
+# Fonction pour recadrer une couche raster à la zone d'étude
+crop_to_study_area <- function(raster_layer) {
+  cropped_layer <- crop(raster_layer, study_extent)
+  return(cropped_layer)
+}
+
+# Chargement des couches raster
+bio1 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif")
+bio2 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_2.tif")
+bio3 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_3.tif")
+bio4 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_4.tif")
+bio5 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_5.tif")
+bio6 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_6.tif")
+bio7 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_7.tif")
+bio8 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_8.tif")
+bio9 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_9.tif")
+bio10 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_10.tif")
+bio11 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_11.tif")
+bio12 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_12.tif")
+bio13 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_13.tif")
+bio14 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_14.tif")
+bio15 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_15.tif")
+bio16 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_16.tif")
+bio17 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_17.tif")
+bio18 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_18.tif")
+bio19 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_bio/wc2.1_2.5m_bio_19.tif")
+elev <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_elev/wc2.1_2.5m_elev.tif")
+vapr01 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_01.tif")
+vapr02 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_02.tif")
+vapr03 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_03.tif")
+vapr04 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_04.tif")
+vapr05 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_05.tif")
+vapr06 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_06.tif")
+vapr07 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_07.tif")
+vapr08 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_08.tif")
+vapr09 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_09.tif")
+vapr10 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_10.tif")
+vapr11 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_11.tif")
+vapr12 <- raster("D:/Mémoire_documents_supps/Rasters Internet/Worldclim2/wc2.1_2.5m_vapr/wc2.1_2.5m_vapr_12.tif")
+hand <- raster("D:/Mémoire_documents_supps/Rasters Internet/Merit Hydro HAND/HAND2.tif")
+```
+
+```{r Modification des couches raster, include=FALSE}
+# Recadrer chaque couche raster à la zone d'étude
+bio1 <- crop_to_study_area(bio1)
+bio2 <- crop_to_study_area(bio2)
+bio3 <- crop_to_study_area(bio3)
+bio4 <- crop_to_study_area(bio4)
+bio5 <- crop_to_study_area(bio5)
+bio6 <- crop_to_study_area(bio6)
+bio7 <- crop_to_study_area(bio7)
+bio8 <- crop_to_study_area(bio8)
+bio9 <- crop_to_study_area(bio9)
+bio10 <- crop_to_study_area(bio10)
+bio11 <- crop_to_study_area(bio11)
+bio12 <- crop_to_study_area(bio12)
+bio13 <- crop_to_study_area(bio13)
+bio14 <- crop_to_study_area(bio14)
+bio15 <- crop_to_study_area(bio15)
+bio16 <- crop_to_study_area(bio16)
+bio17 <- crop_to_study_area(bio17)
+bio18 <- crop_to_study_area(bio18)
+bio19 <- crop_to_study_area(bio19)
+elev <- crop_to_study_area(elev)
+vapr01 <- crop_to_study_area(vapr01)
+vapr02 <- crop_to_study_area(vapr02)
+vapr03 <- crop_to_study_area(vapr03)
+vapr04 <- crop_to_study_area(vapr04)
+vapr05 <- crop_to_study_area(vapr05)
+vapr06 <- crop_to_study_area(vapr06)
+vapr07 <- crop_to_study_area(vapr07)
+vapr08 <- crop_to_study_area(vapr08)
+vapr09 <- crop_to_study_area(vapr09)
+vapr10 <- crop_to_study_area(vapr10)
+vapr11 <- crop_to_study_area(vapr11)
+vapr12 <- crop_to_study_area(vapr12)
+hand <- crop_to_study_area(hand)
+```
+
+
+```{r ACP à proprement parler et visualisation, include=FALSE}
+# Regroupement en 1 jeu de donnees
+data <- data.frame(bio1 = values(bio1), bio2 = values(bio2), bio3 = values(bio3), bio4 = values(bio4), bio5 = values(bio5), bio6 = values(bio6), bio7 = values(bio7), bio8 = values(bio8), bio9 = values(bio9), bio10 = values(bio10), bio11 = values(bio11), bio12 = values(bio12), bio13 = values(bio13), bio14 = values(bio14), bio15 = values(bio15), bio16 = values(bio16), bio17 = values(bio17), bio18 = values(bio18), bio19 = values(bio19), elev = values(elev), vapr01 = values(vapr01), vapr02 = values(vapr02), vapr03 = values(vapr03), vapr04 = values(vapr04), vapr05 = values(vapr05), vapr06 = values(vapr06), vapr07 = values(vapr07), vapr08 = values(vapr08), vapr09 = values(vapr09), vapr10 = values(vapr10), vapr11 = values(vapr11), vapr12 = values(vapr12), hand = values(hand))
+
+# Pour supprimer les lignes du tableau contenant des données manquantes (NA) :
+data <- data[complete.cases(data),]
+
+# Pour définir les différentes catégories qui serviront à colorer les points de l'ACP :
+
+names = c("bio1","bio2","bio3","bio4","bio5","bio6","bio7","bio8","bio9","bio10","bio11","bio12","bio13","bio14","bio15","bio16","bio17","bio18","bio19","elev","vapr01","vapr02","vapr03","vapr04","vapr05","vapr06","vapr07","vapr08","vapr09","vapr10","vapr11","vapr12","hand")
+cols1 = c("#E33418","#6FB120","#4798CE","#D6EEF9","#F6B7A1") # une couleur par catégorie
+cols2 = rep(NA, dim(data)[1]) # une couleur par individu
+data = data[sample(1:dim(data)[1],dim(data)[1],replace=F),]
+
+# Réalisation de l'ACP en elle-même :
+pca = ade4::dudi.pca(data, scannf=F, nf=22)
+lis = pca$li[,1:2]; cos = pca$co
+ChatGPT
+
+Il semble que vous rencontriez un problème avec votre code. Cependant, vous n'avez pas fourni d'informations spécifiques sur l'erreur ou le comportement incorrect que vous observez. Pourriez-vous préciser ce qui ne fonctionne pas ou l'erreur que vous rencontrez ?
+User
+> data <- data.frame(bio1 = values(bio1), bio2 = values(bio2), bio3 = values(bio3), bio4 = values(bio4), bio5 = values(bio5), bio6 = values(bio6), bio7 = values(bio7), bio8 = values(bio8), bio9 = values(bio9), bio10 = values(bio10), bio11 = values(bio11), bio12 = values(bio12), bio13 = values(bio13), bio14 = values(bio14), bio15 = values(bio15), bio16 = values(bio16), bio17 = values(bio17), bio18 = values(bio18), bio19 = values(bio19), elev = values(elev), vapr01 = values(vapr01), vapr02 = values(vapr02), vapr03 = values(vapr03), vapr04 = values(vapr04), vapr05 = values(vapr05), vapr06 = values(vapr06), vapr07 = values(vapr07), vapr08 = values(vapr08), vapr09 = values(vapr09), vapr10 = values(vapr10), vapr11 = values(vapr11), vapr12 = values(vapr12), hand = values(hand))
+Erreur dans data.frame(bio1 = values(bio1), bio2 = values(bio2), bio3 = values(bio3),  : 
+  les arguments impliquent des nombres de lignes différents : 65751, 164266968
+> hand <- crop_to_study_area(hand)
+> print(hand)
+class      : RasterLayer 
+dimensions : 15143, 10847, 164256121  (nrow, ncol, ncell)
+resolution : 0.0008333333, 0.0008333333  (x, y)
+extent     : 7.500417, 16.53958, -5.989583, 6.629583  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +datum=WGS84 +no_defs 
+source     : r_tmp_2024-03-26_114919_20012_51172.grd 
+names      : HAND2 
+values     : 0, 2763.6  (min, max)
+
+> print(elev)
+class      : RasterLayer 
+dimensions : 303, 217, 65751  (nrow, ncol, ncell)
+resolution : 0.04166667, 0.04166667  (x, y)
+extent     : 7.5, 16.54167, -6, 6.625  (xmin, xmax, ymin, ymax)
+crs        : +proj=longlat +datum=WGS84 +no_defs 
+source     : memory
+names      : wc2.1_2.5m_elev 
+values     : 1, 3345  (min, max)
+ChatGPT
+
+L'erreur que vous rencontrez lors de la création du dataframe data est due au fait que les couches raster utilisées n'ont pas le même nombre de cellules (pixels). Cela se produit car la fonction crop_to_study_area() ne redimensionne pas les couches pour qu'elles aient la même taille.
+
+Vous pouvez résoudre ce problème en redimensionnant toutes les couches raster pour qu'elles aient la même taille que elev, qui semble être la plus petite. Voici comment vous pouvez le faire :
+
+{r
+
+# Fonction pour redimensionner une couche raster à la taille de la couche de référence
+resize_to_reference <- function(raster_layer, reference_layer) {
+  resized_layer <- resample(raster_layer, reference_layer, method = "bilinear")
+  return(resized_layer)
+}
+
+# Redimensionner toutes les couches raster à la taille de elev
+bio1 <- resize_to_reference(bio1, elev)
+bio2 <- resize_to_reference(bio2, elev)
+# Redimensionner les autres couches de la même manière...
+
+Ensuite, vous pouvez recréer le dataframe data avec ces couches raster redimensionnées. Cela devrait résoudre l'erreur que vous rencontrez.

@@ -1,0 +1,103 @@
+User
+J'aimerais, à partir de ces 2 fichiers (RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_final.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")), créé un nouveau dataframe comportant les noms des espèces qui sont dans sp_etude qui apparraissent plus que 5 fois dans la colonne 'tax_infra_level' de RB_sp
+ChatGPT
+
+Pour accomplir cette tâche en utilisant R, vous pouvez suivre ces étapes :
+
+    Charger les données depuis les fichiers CSV et Excel.
+    Compter le nombre d'occurrences de chaque espèce dans la colonne 'tax_infra_level' du premier fichier.
+    Filtrer les espèces qui apparaissent plus de 5 fois.
+    Créer un nouveau dataframe avec les noms des espèces filtrées.
+
+Voici un exemple de code pour effectuer cela :
+
+R
+
+# Assurez-vous d'avoir installé les packages nécessaires
+# install.packages("readr")
+# install.packages("readxl")
+
+# Charger les bibliothèques nécessaires
+library(readr)
+library(readxl)
+
+# Charger les données depuis les fichiers
+RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_final.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+
+# Compter le nombre d'occurrences de chaque espèce dans RB_sp
+occurrences <- table(RB_sp$tax_infra_level)
+
+# Filtrer les espèces qui apparaissent plus de 5 fois
+esp_plus_5 <- names(occurrences[occurrences > 5])
+
+# Filtrer les espèces de sp_etude qui apparaissent plus de 5 fois dans RB_sp
+esp_a_garder <- sp_etude$nom_espece[sp_etude$nom_espece %in% esp_plus_5]
+
+# Créer un nouveau dataframe avec les noms des espèces filtrées
+nouveau_dataframe <- data.frame(nom_espece = esp_a_garder)
+
+# Afficher le nouveau dataframe
+print(nouveau_dataframe)
+
+Ceci devrait créer un nouveau dataframe contenant les noms des espèces qui apparaissent plus de 5 fois dans la colonne 'tax_infra_level' du fichier RB_sp, et qui sont également présentes dans le dataframe sp_etude.
+User
+> # On va commencer par ne prendre que les sp qui ont plus de 5 occurrences
+> RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_final.csv")
+New names:Avis : One or more parsing issues, call `problems()` on your data frame for details, e.g.:
+  dat <- vroom(...)
+  problems(dat)Rows: 1713 Columns: 138── Column specification ───────────────────────────────────────────────────────────────────────────
+Delimiter: ","
+chr (99): wkt_geom, DB, idc, colnam, suffix, nbr, prefix, detnam, colnamsup, dety, detm, maj_ar...
+dbl (28): detd, ddlon, calc_accuracy, accuracy, verif_distance, id_maj_area, cold, data_modif_m...
+lgl (11): ...128, ...129, ...130, ...131, ...132, ...133, ...134, ...135, ...136, ...137, ...138
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+> sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+> 
+> occurrences <- table(RB_sp$tax_infra_level) #comptage des noms
+> esp_plus_5 <- names(occurrences[occurrences > 5]) #prendre que celles avec plus de 5 occ
+> esp_a_garder <- sp_etude$nom_espece[sp_etude$nom_espece %in% esp_plus_5]
+Avis : Unknown or uninitialised column: `nom_espece`.Avis : Unknown or uninitialised column: `nom_espece`.
+> sp_work <- data.frame(nom_espece = esp_a_garder)
+ChatGPT
+
+Il semble y avoir quelques problèmes lors de la lecture des fichiers et dans la correspondance des colonnes. Voici une approche pour résoudre ces problèmes :
+
+R
+
+# Charger les bibliothèques nécessaires
+library(readr)
+library(readxl)
+
+# Charger les données depuis les fichiers
+RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_final.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+
+# Afficher la structure de RB_sp pour voir les noms de colonnes
+str(RB_sp)
+
+# Vérifier les premières lignes de sp_etude pour comprendre la structure
+head(sp_etude)
+
+# Assurez-vous que le nom de la colonne contenant les noms d'espèces dans sp_etude est correct
+# Si le nom de la colonne est différent, ajustez la ligne suivante en conséquence
+nom_colonne <- "nom_espece"
+
+# Compter le nombre d'occurrences de chaque espèce dans RB_sp
+occurrences <- table(RB_sp$tax_infra_level)
+
+# Filtrer les espèces qui apparaissent plus de 5 fois
+esp_plus_5 <- names(occurrences[occurrences > 5])
+
+# Filtrer les espèces de sp_etude qui apparaissent plus de 5 fois dans RB_sp
+esp_a_garder <- sp_etude[[nom_colonne]][sp_etude[[nom_colonne]] %in% esp_plus_5]
+
+# Créer un nouveau dataframe avec les noms des espèces filtrées
+sp_work <- data.frame(nom_espece = esp_a_garder)
+
+# Afficher le nouveau dataframe
+print(sp_work)
+
+Assurez-vous que le nom de la colonne contenant les noms d'espèces dans le fichier sp_etude est correct. Vous pouvez le vérifier en examinant les premières lignes de ce dataframe. Si le nom de la colonne est différent de "nom_espece", vous devez le changer dans le code à la variable nom_colonne.

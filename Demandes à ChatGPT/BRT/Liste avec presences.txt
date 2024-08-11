@@ -1,0 +1,124 @@
+A partir du code suivant, peux-tu m'écrire quelques lignes permettant de rajouter un 1 dans la colonne Presence de grid si le numéro de la colonne ID_grid de grid correspond à un des numéros présents dans la colonne ID_grid de RB_work. # On va commencer par ne prendre que les sp qui ont plus de 5 occurrences
+RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+
+occurrences <- table(RB_sp$tax_infra_level) #comptage des noms
+esp_plus_5 <- names(occurrences[occurrences > 13]) #prendre que celles avec plus de 5 occ
+esp_a_garder <- sp_etude$Taxon[sp_etude$Taxon %in% esp_plus_5]
+sp_work <- data.frame(Taxon = esp_a_garder) %>%
+  sample_n(1)
+rm(sp_etude) & rm(esp_a_garder) & rm(esp_plus_5) & rm(occurrences)
+RB_work <- RB_sp[RB_sp$tax_infra_level %in% sp_work$Taxon,]
+```
+
+```{r Presence in cells, include=FALSE}
+grid <- st_read("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid.shp")
+grid$Presence <- NA
+grid$coord <- NA
+ChatGPT
+
+Pour ajouter un 1 dans la colonne Presence de grid lorsque le numéro de la colonne ID_grid de grid correspond à l'un des numéros présents dans la colonne ID_grid de RB_work, vous pouvez utiliser la fonction ifelse() de R. Voici comment vous pouvez procéder :
+
+r
+
+# On va commencer par ne prendre que les sp qui ont plus de 5 occurrences
+RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+
+occurrences <- table(RB_sp$tax_infra_level) #comptage des noms
+esp_plus_5 <- names(occurrences[occurrences > 13]) #prendre que celles avec plus de 5 occ
+esp_a_garder <- sp_etude$Taxon[sp_etude$Taxon %in% esp_plus_5]
+sp_work <- data.frame(Taxon = esp_a_garder) %>%
+  sample_n(1)
+rm(sp_etude) & rm(esp_a_garder) & rm(esp_plus_5) & rm(occurrences)
+RB_work <- RB_sp[RB_sp$tax_infra_level %in% sp_work$Taxon,]
+
+# Ajouter 1 dans la colonne Presence de grid si ID_grid correspond à un des numéros de RB_work
+grid <- st_read("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid.shp")
+grid$Presence <- ifelse(grid$ID_grid %in% RB_work$ID_grid, 1, NA)
+
+Dans ce code, la fonction ifelse() est utilisée pour assigner des valeurs à la colonne Presence de grid. Si le numéro de la colonne ID_grid de grid est présent dans la colonne ID_grid de RB_work, alors la valeur 1 est attribuée à la colonne Presence, sinon la valeur NA est attribuée.
+User
+Serait-il possible de faire cette action pour toutes les lignes du fichier sp_etude mais en produisant à chaque fois un fichier grid différent (pour chaque Taxon)?
+2 / 2
+ChatGPT
+
+Bien sûr, vous pouvez utiliser une boucle pour effectuer cette opération pour chaque taxon dans le fichier sp_etude. Voici comment vous pouvez le faire :
+
+r
+
+library(dplyr)
+
+# Charger les bibliothèques nécessaires
+library(readr)
+library(readxl)
+library(sf)
+
+# Charger les données
+RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+grid <- st_read("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid.shp")
+
+# Filtrer les espèces avec plus de 5 occurrences
+occurrences <- table(RB_sp$tax_infra_level)
+esp_plus_5 <- names(occurrences[occurrences > 13])
+esp_a_garder <- sp_etude$Taxon[sp_etude$Taxon %in% esp_plus_5]
+
+# Boucle sur chaque taxon dans sp_etude
+for (taxon in esp_a_garder) {
+  # Filtrer RB_sp pour le taxon spécifique
+  RB_work <- RB_sp[RB_sp$tax_infra_level == taxon, ]
+  
+  # Ajouter 1 dans la colonne Presence de grid si ID_grid correspond à un des numéros de RB_work
+  grid$Presence <- ifelse(grid$ID_grid %in% RB_work$ID_grid, 1, NA)
+  
+  # Écrire le fichier grid modifié
+  filename <- paste0("grid_", gsub(" ", "_", taxon), ".shp")
+  st_write(grid, filename)
+}
+
+Ce code va créer un fichier shapefile modifié pour chaque taxon dans sp_etude. Chaque fichier aura le nom du taxon avec des espaces remplacés par des underscores, suivi de l'extension .shp.
+User
+Au lieu de les ecrire sur mon ordi, pourrais-on les assembler dans une liste?
+ChatGPT
+
+Oui, bien sûr, au lieu de les écrire sur votre ordinateur, vous pouvez les assembler dans une liste en utilisant une liste en R. Voici comment vous pouvez le faire :
+
+r
+
+library(dplyr)
+
+# Charger les bibliothèques nécessaires
+library(readr)
+library(readxl)
+library(sf)
+
+# Charger les données
+RB_sp <- read_csv("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/RB_zone_grid.csv")
+sp_etude <- read_excel("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/R script/Espèces_travail/sp_etude.xlsx")
+grid <- st_read("C:/Users/Alex Massart/Documents/ULB/2023-2024/Mémoire/QGIS/Shapefiles/grid.shp")
+
+# Filtrer les espèces avec plus de 5 occurrences
+occurrences <- table(RB_sp$tax_infra_level)
+esp_plus_5 <- names(occurrences[occurrences > 13])
+esp_a_garder <- sp_etude$Taxon[sp_etude$Taxon %in% esp_plus_5]
+
+# Créer une liste pour stocker les fichiers grid modifiés
+liste_grids <- list()
+
+# Boucle sur chaque taxon dans sp_etude
+for (taxon in esp_a_garder) {
+  # Filtrer RB_sp pour le taxon spécifique
+  RB_work <- RB_sp[RB_sp$tax_infra_level == taxon, ]
+  
+  # Copier la grille originale
+  grid_modifie <- grid
+  
+  # Ajouter 1 dans la colonne Presence de grid si ID_grid correspond à un des numéros de RB_work
+  grid_modifie$Presence <- ifelse(grid_modifie$ID_grid %in% RB_work$ID_grid, 1, NA)
+  
+  # Ajouter le grid modifié à la liste
+  liste_grids[[taxon]] <- grid_modifie
+}
+
+Maintenant, la variable liste_grids contiendra une liste où chaque élément correspond à un taxon de sp_etude, et chaque élément est un fichier grid modifié correspondant à ce taxon.
